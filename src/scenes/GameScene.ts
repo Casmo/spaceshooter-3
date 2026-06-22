@@ -1,28 +1,39 @@
 import { Container, Text, type FederatedPointerEvent } from "pixi.js";
-import { PLAYER, WEAPON, SWARMER } from "../config";
+import { PLAYER, WEAPON, ENEMY_BULLET, VIRTUAL_WIDTH } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
 import { ProjectilePool } from "../game/ProjectilePool";
-import { EnemyPool } from "../game/EnemyPool";
+import { EnemyPool, type EnemyContext } from "../game/EnemyPool";
+import { WaveManager } from "../game/WaveManager";
+import { damageTierColor } from "../game/colors";
 import { GameOverScene } from "./GameOverScene";
 
 /**
- * Gameplay scene. Owns the starfield, player ship, projectile pool, and enemy
- * pool; resolves collisions and ends the run when lives are spent. Waves, XP,
- * and the real HUD arrive in later issues — for now a small debug readout shows
- * HP / lives so the loop is verifiable.
+ * Gameplay scene. Owns the starfield, player ship, both projectile pools, the
+ * enemy pool, and the wave manager; resolves collisions and ends the run when
+ * lives are spent. The real HUD arrives in #7 — for now a small debug readout
+ * shows HP / lives / wave so the loop is verifiable.
  */
 export class GameScene implements Scene {
   readonly view = new Container();
   private readonly starfield = new Starfield();
-  private readonly bullets: ProjectilePool;
   private readonly enemies = new EnemyPool();
+  private readonly bullets: ProjectilePool;
+  private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
+  private readonly waves = new WaveManager(this.enemies);
+  private readonly banner: Text;
   private readonly debug: Text;
 
-  private spawnTimer = 0;
+  // Reused each frame so enemies can shoot at the player.
+  private readonly enemyCtx: EnemyContext = {
+    playerX: 0,
+    playerY: 0,
+    fire: (x, y, vx, vy, damage) =>
+      this.enemyBullets.spawn(x, y, vx, vy, damage, damageTierColor(damage)),
+  };
 
   // Input state, in virtual coordinates.
   private targetX = PLAYER.startX;
@@ -49,8 +60,28 @@ export class GameScene implements Scene {
     );
     this.view.addChild(this.bullets.view);
 
+    this.enemyBullets = new ProjectilePool(
+      getTexture("enemyBullet"),
+      ENEMY_BULLET.scale,
+      ENEMY_BULLET.radiusFactor,
+    );
+    this.view.addChild(this.enemyBullets.view);
+
     this.player = new Player(this.bullets);
     this.view.addChild(this.player.sprite);
+
+    this.banner = new Text({
+      text: "",
+      style: {
+        fill: 0xffffff,
+        fontSize: 72,
+        fontWeight: "bold",
+        fontFamily: "Arial",
+      },
+    });
+    this.banner.anchor.set(0.5);
+    this.banner.position.set(VIRTUAL_WIDTH / 2, 160);
+    this.view.addChild(this.banner);
 
     this.debug = new Text({
       text: "",
@@ -80,70 +111,74 @@ export class GameScene implements Scene {
 
   update(dt: number): void {
     this.starfield.update(dt);
-
-    this.spawnTimer -= dt;
-    if (this.spawnTimer <= 0) {
-      this.enemies.spawnSwarmer();
-      this.spawnTimer = SWARMER.spawnInterval;
-    }
+    this.waves.update(dt);
 
     this.player.update(dt, this.targetX, this.targetY, this.firing);
-    this.enemies.update(dt);
+
+    this.enemyCtx.playerX = this.player.x;
+    this.enemyCtx.playerY = this.player.y;
+    this.enemies.update(dt, this.enemyCtx);
     this.bullets.update(dt);
+    this.enemyBullets.update(dt);
 
     this.resolveBulletHits();
-    this.resolvePlayerHits();
+    this.resolveEnemyBulletHits();
+    this.resolveContactHits();
 
-    this.debug.text = `HP ${Math.max(0, Math.ceil(this.player.hp))}   Lives ${this.player.lives}`;
+    this.updateOverlay();
 
     if (this.player.isGameOver) {
       this.manager.changeScene(new GameOverScene(this.manager));
     }
   }
 
-  /** Bullets damage enemies they overlap; a bullet is consumed on the first hit. */
+  /** Player bullets damage enemies; a bullet is consumed on its first hit. */
   private resolveBulletHits(): void {
     for (const enemy of this.enemies.activeEnemies) {
       if (!enemy.active) continue;
       for (const bullet of this.bullets.activeProjectiles) {
         if (!bullet.active) continue;
-        if (
-          overlaps(
-            bullet.x,
-            bullet.y,
-            bullet.radius,
-            enemy.x,
-            enemy.y,
-            enemy.radius,
-          )
-        ) {
+        if (circlesOverlap(bullet, enemy)) {
           bullet.kill();
-          if (enemy.takeDamage(WEAPON.damage)) break;
+          if (enemy.takeDamage(bullet.damage)) {
+            this.enemies.handleDeath(enemy);
+            break;
+          }
         }
       }
     }
   }
 
-  /** Enemy contact damages the player (respecting i-frames) and destroys the enemy. */
-  private resolvePlayerHits(): void {
+  /** Enemy bullets damage the player (ignored while invulnerable). */
+  private resolveEnemyBulletHits(): void {
+    if (this.player.isInvulnerable) return;
+    for (const bullet of this.enemyBullets.activeProjectiles) {
+      if (!bullet.active) continue;
+      if (pointInRadius(bullet.x, bullet.y, bullet.radius, this.player)) {
+        bullet.kill();
+        this.player.takeHit(bullet.damage);
+        return;
+      }
+    }
+  }
+
+  /** Enemy contact damages the player and destroys the enemy. */
+  private resolveContactHits(): void {
     if (this.player.isInvulnerable) return;
     for (const enemy of this.enemies.activeEnemies) {
       if (!enemy.active) continue;
-      if (
-        overlaps(
-          this.player.x,
-          this.player.y,
-          this.player.hitRadius,
-          enemy.x,
-          enemy.y,
-          enemy.radius,
-        )
-      ) {
+      if (pointInRadius(enemy.x, enemy.y, enemy.radius, this.player)) {
         enemy.kill();
         this.player.takeHit(enemy.contactDamage);
-        break;
+        return;
       }
     }
+  }
+
+  private updateOverlay(): void {
+    this.banner.visible = this.waves.inBreather;
+    if (this.waves.inBreather) this.banner.text = this.waves.bannerText;
+    this.debug.text = `HP ${Math.max(0, Math.ceil(this.player.hp))}   Lives ${this.player.lives}   Wave ${this.waves.currentWave}`;
   }
 
   destroy(): void {
@@ -157,17 +192,27 @@ export class GameScene implements Scene {
   }
 }
 
-/** Circle-vs-circle overlap test. */
-function overlaps(
-  ax: number,
-  ay: number,
-  ar: number,
-  bx: number,
-  by: number,
-  br: number,
+interface Circle {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+function circlesOverlap(a: Circle, b: Circle): boolean {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const r = a.radius + b.radius;
+  return dx * dx + dy * dy <= r * r;
+}
+
+function pointInRadius(
+  x: number,
+  y: number,
+  radius: number,
+  target: { x: number; y: number; hitRadius: number },
 ): boolean {
-  const dx = ax - bx;
-  const dy = ay - by;
-  const r = ar + br;
+  const dx = x - target.x;
+  const dy = y - target.y;
+  const r = radius + target.hitRadius;
   return dx * dx + dy * dy <= r * r;
 }

@@ -118,6 +118,7 @@ export class Player {
         this.sprite.y - this.halfHeight,
         0,
         -WEAPON.bulletSpeed,
+        WEAPON.damage,
       );
       this.fireTimer = WEAPON.cooldown;
     }

@@ -9,6 +9,8 @@ export class Projectile {
   active = false;
   /** Collision radius in virtual px (set from the sprite size at spawn). */
   radius = 0;
+  /** Damage dealt to whatever this projectile hits. */
+  damage = 0;
 
   constructor(texture: Texture, scale: number) {
     this.sprite = new Sprite(texture);
@@ -62,8 +64,15 @@ export class ProjectilePool {
     return p;
   }
 
-  /** Spawn a projectile at (x, y) with the given velocity (virtual px/s). */
-  spawn(x: number, y: number, vx: number, vy: number): void {
+  /** Spawn a projectile at (x, y) with velocity (virtual px/s), damage, and tint. */
+  spawn(
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    damage = 0,
+    tint = 0xffffff,
+  ): void {
     // Enforce the hard cap by recycling the oldest live projectile.
     if (this.live.length >= PROJECTILES.maxLive) {
       const oldest = this.live.shift();
@@ -76,7 +85,9 @@ export class ProjectilePool {
     p.sprite.position.set(x, y);
     p.vx = vx;
     p.vy = vy;
+    p.damage = damage;
     p.radius = this.radius;
+    p.sprite.tint = tint;
     this.live.push(p);
   }
 
