@@ -5,12 +5,24 @@ import { ProjectilePool } from "./ProjectilePool";
 
 /**
  * The player ship. Eased-follows the cursor (smoothed, capped by a max speed so
- * it visibly "chases" a far cursor) and fires the base weapon on a cooldown
- * while the trigger is held.
+ * it visibly "chases" a far cursor), fires the base weapon on a cooldown while
+ * the trigger is held, and tracks HP / lives with invulnerability frames.
  */
 export class Player {
   readonly sprite: Sprite;
-  /** Time remaining (s) until the weapon can fire again. */
+
+  hp: number = PLAYER.maxHp;
+  maxHp: number = PLAYER.maxHp;
+  lives: number = PLAYER.startLives;
+  /** Core collision radius — much smaller than the sprite. */
+  readonly hitRadius: number;
+
+  /** True once all lives are spent; the scene should end the run. */
+  private gameOver = false;
+  /** Seconds of invulnerability remaining. */
+  private invulnTimer = 0;
+  private blinkTimer = 0;
+
   private fireTimer = 0;
   private readonly halfWidth: number;
   private readonly halfHeight: number;
@@ -22,6 +34,8 @@ export class Player {
     this.sprite.position.set(PLAYER.startX, PLAYER.startY);
     this.halfWidth = this.sprite.width / 2;
     this.halfHeight = this.sprite.height / 2;
+    this.hitRadius =
+      Math.min(this.halfWidth, this.halfHeight) * PLAYER.hitboxRadiusFactor;
   }
 
   get x(): number {
@@ -30,16 +44,40 @@ export class Player {
   get y(): number {
     return this.sprite.y;
   }
+  get isInvulnerable(): boolean {
+    return this.invulnTimer > 0;
+  }
+  get isGameOver(): boolean {
+    return this.gameOver;
+  }
 
-  /**
-   * @param dt       seconds since last frame
-   * @param targetX  cursor position in virtual coords
-   * @param targetY  cursor position in virtual coords
-   * @param firing   whether the trigger (left mouse) is held
-   */
   update(dt: number, targetX: number, targetY: number, firing: boolean): void {
     this.move(dt, targetX, targetY);
     this.shoot(dt, firing);
+    this.tickInvulnerability(dt);
+  }
+
+  /**
+   * Apply contact/enemy damage. No-op while invulnerable. On reaching 0 HP,
+   * consumes a life and respawns at full HP (or ends the run at 0 lives).
+   */
+  takeHit(damage: number): void {
+    if (this.invulnTimer > 0 || this.gameOver) return;
+    this.hp -= damage;
+    if (this.hp > 0) {
+      this.invulnTimer = PLAYER.iframesHit;
+      return;
+    }
+    // Out of HP: spend a life.
+    this.lives -= 1;
+    if (this.lives <= 0) {
+      this.hp = 0;
+      this.gameOver = true;
+      return;
+    }
+    this.hp = this.maxHp;
+    this.sprite.position.set(PLAYER.startX, PLAYER.startY);
+    this.invulnTimer = PLAYER.iframesRespawn;
   }
 
   private move(dt: number, targetX: number, targetY: number): void {
@@ -60,7 +98,6 @@ export class Player {
       stepY *= k;
     }
 
-    // Keep the whole ship inside the playfield.
     this.sprite.x = clamp(
       this.sprite.x + stepX,
       this.halfWidth,
@@ -76,7 +113,6 @@ export class Player {
   private shoot(dt: number, firing: boolean): void {
     this.fireTimer -= dt;
     if (firing && this.fireTimer <= 0) {
-      // Fire from the ship's nose, straight up.
       this.bullets.spawn(
         this.sprite.x,
         this.sprite.y - this.halfHeight,
@@ -85,6 +121,20 @@ export class Player {
       );
       this.fireTimer = WEAPON.cooldown;
     }
+  }
+
+  private tickInvulnerability(dt: number): void {
+    if (this.invulnTimer <= 0) {
+      this.sprite.alpha = 1;
+      return;
+    }
+    this.invulnTimer -= dt;
+    this.blinkTimer -= dt;
+    if (this.blinkTimer <= 0) {
+      this.blinkTimer = PLAYER.blinkInterval;
+      this.sprite.alpha = this.sprite.alpha < 1 ? 1 : 0.35;
+    }
+    if (this.invulnTimer <= 0) this.sprite.alpha = 1;
   }
 }
 
