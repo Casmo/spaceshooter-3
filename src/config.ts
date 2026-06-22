@@ -73,8 +73,129 @@ export const SWARMER = {
   swayFrequency: 1.4,
   /** Collision radius as a fraction of the sprite half-width. */
   radiusFactor: 0.7,
-  /** Seconds between spawns (temporary; replaced by waves in #4). */
-  spawnInterval: 0.7,
+} as const;
+
+/** Gunner enemy (insect-2): tougher, slower, fires aimed shots at the player. */
+export const GUNNER = {
+  scale: 0.8,
+  hp: 70,
+  contactDamage: 25,
+  speed: 120,
+  bulletDamage: 12,
+  shootInterval: 1.6,
+  radiusFactor: 0.7,
+} as const;
+
+/** Asteroid hazards. Each size drifts down, deals contact damage, and splits
+ *  into smaller ones (large -> medium -> small). */
+export type AsteroidSize = "large" | "medium" | "small";
+export const ASTEROID: Record<
+  AsteroidSize,
+  {
+    tex: "asteroidLarge" | "asteroidMedium" | "asteroidSmall";
+    hp: number;
+    contactDamage: number;
+    speed: number;
+    scale: number;
+    spin: number;
+    splitInto: AsteroidSize | null;
+    splitCount: number;
+    radiusFactor: number;
+  }
+> = {
+  large: {
+    tex: "asteroidLarge",
+    hp: 90,
+    contactDamage: 30,
+    speed: 130,
+    scale: 0.9,
+    spin: 0.5,
+    splitInto: "medium",
+    splitCount: 2,
+    radiusFactor: 0.78,
+  },
+  medium: {
+    tex: "asteroidMedium",
+    hp: 45,
+    contactDamage: 22,
+    speed: 175,
+    scale: 0.9,
+    spin: 0.8,
+    splitInto: "small",
+    splitCount: 2,
+    radiusFactor: 0.78,
+  },
+  small: {
+    tex: "asteroidSmall",
+    hp: 20,
+    contactDamage: 15,
+    speed: 220,
+    scale: 0.9,
+    spin: 1.2,
+    splitInto: null,
+    splitCount: 0,
+    radiusFactor: 0.78,
+  },
+};
+
+/** Mini-boss: scaled-up Gunner, wave-5 capstone, fires a fan at the player. */
+export const MINIBOSS = {
+  scale: 2.2,
+  hp: 900,
+  /** HP scaling per mini-boss appearance (gets tougher each time). */
+  hpPerAppearance: 0.5,
+  contactDamage: 40,
+  /** Descent speed until it settles. */
+  speed: 90,
+  /** Y it settles at, then strafes horizontally. */
+  targetY: 240,
+  strafeSpeed: 170,
+  bulletDamage: 18,
+  shootInterval: 1.1,
+  fanCount: 3,
+  fanSpreadDeg: 26,
+  radiusFactor: 0.7,
+} as const;
+
+/** Enemy projectile (recolored plasm.png, tinted by damage tier). */
+export const ENEMY_BULLET = {
+  scale: 0.45,
+  speed: 540,
+  radiusFactor: 0.7,
+} as const;
+
+/** Damage-tier colors (low -> high) for tinting enemy bullets so the threat is
+ *  readable at a glance. `max` is the inclusive upper bound for that tier. */
+export const DAMAGE_TIERS: readonly { max: number; color: number }[] = [
+  { max: 10, color: 0xffffff }, // white
+  { max: 20, color: 0xffe066 }, // yellow
+  { max: 30, color: 0xff9933 }, // orange
+  { max: 45, color: 0xff4444 }, // red
+  { max: Infinity, color: 0xb066ff }, // purple
+];
+
+/** Wave structure, escalation, and pacing. */
+export const WAVES = {
+  /** Enemy-free breather between waves, seconds. */
+  breatherSeconds: 3,
+  /** Seconds between spawns within a wave (wave 1). */
+  baseSpawnInterval: 0.7,
+  /** Spawn interval shrinks by this each wave (faster spawns later). */
+  spawnIntervalDecayPerWave: 0.02,
+  minSpawnInterval: 0.25,
+  /** Enemy count in wave 1, and growth per wave. */
+  baseBudget: 6,
+  budgetPerWave: 2,
+  /** Stat scaling per wave. */
+  hpMultPerWave: 0.08,
+  speedMultPerWave: 0.03,
+  /** +1 asteroid split every N waves (capped). */
+  splitBonusEveryWaves: 4,
+  maxAsteroidSplit: 4,
+  /** A mini-boss caps every Nth wave. */
+  miniBossEvery: 5,
+  /** Extra swarmers spawned alongside the mini-boss. */
+  miniBossEscort: 3,
 } as const;
 
 /** Projectile pooling and the safety cap. */

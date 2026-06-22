@@ -13,6 +13,11 @@ const MANIFEST = {
   star: "/assets/star.png",
   bullet: "/assets/bullet.png",
   swarmer: "/assets/insect-1.png",
+  gunner: "/assets/insect-2.png",
+  enemyBullet: "/assets/plasm.png",
+  asteroidLarge: "/assets/large-A.png",
+  asteroidMedium: "/assets/medium-A.png",
+  asteroidSmall: "/assets/small-A.png",
 } as const;
 
 export type AssetAlias = keyof typeof MANIFEST;
