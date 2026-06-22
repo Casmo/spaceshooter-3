@@ -1,7 +1,38 @@
 import { Container, Sprite, type Texture } from "pixi.js";
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, PROJECTILES } from "../config";
 
-/** A single pooled projectile: a sprite plus its velocity, radius, and flag. */
+/** Options for spawning a projectile. Only x/y/vx/vy are required. */
+export interface SpawnOptions {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  damage?: number;
+  tint?: number;
+  /** Enemies this shot can pass through before being consumed. */
+  pierce?: number;
+  /** Sprite override (modifier visual system); defaults to the pool texture. */
+  texture?: Texture;
+  /** Sprite scale override; defaults to the pool scale (radius scales with it). */
+  scale?: number;
+  /** Lifetime in seconds; <= 0 means it lives until it leaves the field. */
+  life?: number;
+  /** Homing turn rate (rad/s); 0 = no homing. Steered externally. */
+  homing?: number;
+  /** Explosive AoE on impact. */
+  explosiveRadius?: number;
+  explosiveDamage?: number;
+  /** Burn damage-over-time applied on hit. */
+  burnDps?: number;
+  burnDuration?: number;
+  /** Bounce: fragments spawned per hit, and their damage. */
+  fragmentCount?: number;
+  fragmentDamage?: number;
+  /** A target to pre-exclude from this shot's hits (e.g. a fragment's source). */
+  hitsExclude?: unknown;
+}
+
+/** A single pooled projectile: a sprite plus its motion, effects, and flags. */
 export class Projectile {
   readonly sprite: Sprite;
   vx = 0;
@@ -9,26 +40,36 @@ export class Projectile {
   active = false;
   /** Collision radius in virtual px (set from the sprite size at spawn). */
   radius = 0;
-  /** Damage dealt to whatever this projectile hits. */
   damage = 0;
-  /** Remaining enemies this projectile can pass through (Pierce modifier). */
   pierceRemaining = 0;
+  /** Lifetime remaining (s); <= 0 means no lifetime limit. */
+  life = 0;
+  // Modifier effects carried by this shot (0 = inactive).
+  homing = 0;
+  explosiveRadius = 0;
+  explosiveDamage = 0;
+  burnDps = 0;
+  burnDuration = 0;
+  fragmentCount = 0;
+  fragmentDamage = 0;
   /** Targets already hit, so a piercing shot never double-hits the same one. */
   readonly hits = new Set<unknown>();
 
   constructor(
     private readonly baseTexture: Texture,
-    scale: number,
+    private readonly baseScale: number,
   ) {
     this.sprite = new Sprite(baseTexture);
     this.sprite.anchor.set(0.5);
-    this.sprite.scale.set(scale);
+    this.sprite.scale.set(baseScale);
     this.sprite.visible = false;
   }
 
-  /** Default texture for this pool (used when a spawn passes no override). */
   get defaultTexture(): Texture {
     return this.baseTexture;
+  }
+  get defaultScale(): number {
+    return this.baseScale;
   }
 
   get x(): number {
@@ -55,7 +96,7 @@ export class ProjectilePool {
   private readonly all: Projectile[] = [];
   /** Live projectiles, oldest first (so recycling drops the oldest). */
   private readonly live: Projectile[] = [];
-  private readonly radius: number;
+  private readonly baseRadius: number;
 
   constructor(
     private readonly texture: Texture,
@@ -65,8 +106,7 @@ export class ProjectilePool {
     for (let i = 0; i < PROJECTILES.poolInitial; i++) {
       this.create();
     }
-    // All projectiles share a texture/scale, so radius is constant.
-    this.radius = this.texture.width * this.scale * 0.5 * radiusFactor;
+    this.baseRadius = this.texture.width * this.scale * 0.5 * radiusFactor;
   }
 
   private create(): Projectile {
@@ -76,21 +116,7 @@ export class ProjectilePool {
     return p;
   }
 
-  /**
-   * Spawn a projectile at (x, y) with velocity (virtual px/s), damage, and tint.
-   * `pierce` is how many enemies it can pass through; `texture` overrides the
-   * pool's default sprite (used by the modifier visual system).
-   */
-  spawn(
-    x: number,
-    y: number,
-    vx: number,
-    vy: number,
-    damage = 0,
-    tint = 0xffffff,
-    pierce = 0,
-    texture?: Texture,
-  ): void {
+  spawn(o: SpawnOptions): void {
     // Enforce the hard cap by recycling the oldest live projectile.
     if (this.live.length >= PROJECTILES.maxLive) {
       const oldest = this.live.shift();
@@ -100,19 +126,34 @@ export class ProjectilePool {
     const p = this.all.find((q) => !q.active) ?? this.create();
     p.active = true;
     p.sprite.visible = true;
-    p.sprite.position.set(x, y);
-    p.vx = vx;
-    p.vy = vy;
-    p.damage = damage;
-    p.radius = this.radius;
-    p.sprite.tint = tint;
-    p.sprite.texture = texture ?? p.defaultTexture;
-    p.pierceRemaining = pierce;
+    p.sprite.position.set(o.x, o.y);
+    p.vx = o.vx;
+    p.vy = o.vy;
+    p.damage = o.damage ?? 0;
+    p.sprite.tint = o.tint ?? 0xffffff;
+    p.sprite.texture = o.texture ?? p.defaultTexture;
+
+    const scale = o.scale ?? p.defaultScale;
+    p.sprite.scale.set(scale);
+    p.radius = this.baseRadius * (scale / p.defaultScale);
+
+    p.pierceRemaining = o.pierce ?? 0;
+    p.life = o.life ?? 0;
+    p.homing = o.homing ?? 0;
+    p.explosiveRadius = o.explosiveRadius ?? 0;
+    p.explosiveDamage = o.explosiveDamage ?? 0;
+    p.burnDps = o.burnDps ?? 0;
+    p.burnDuration = o.burnDuration ?? 0;
+    p.fragmentCount = o.fragmentCount ?? 0;
+    p.fragmentDamage = o.fragmentDamage ?? 0;
+
     p.hits.clear();
+    if (o.hitsExclude !== undefined) p.hits.add(o.hitsExclude);
+
     this.live.push(p);
   }
 
-  /** Advance live projectiles; drop those killed by collision or off-screen. */
+  /** Advance live projectiles; drop those killed, expired, or off-screen. */
   update(dt: number): void {
     const m = PROJECTILES.despawnMargin;
     for (let i = this.live.length - 1; i >= 0; i--) {
@@ -120,6 +161,14 @@ export class ProjectilePool {
       if (!p.active) {
         this.live.splice(i, 1);
         continue;
+      }
+      if (p.life > 0) {
+        p.life -= dt;
+        if (p.life <= 0) {
+          p.kill();
+          this.live.splice(i, 1);
+          continue;
+        }
       }
       p.sprite.x += p.vx * dt;
       p.sprite.y += p.vy * dt;
