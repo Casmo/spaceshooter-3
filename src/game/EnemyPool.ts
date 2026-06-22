@@ -42,6 +42,12 @@ export class Enemy {
   radius = 0;
   /** XP awarded to the player when this enemy is destroyed. */
   xpValue = 0;
+  /** Set when a burn DoT (not a bullet/contact) lands the killing blow. */
+  killedByBurn = false;
+
+  // Burn damage-over-time state.
+  private burnTimer = 0;
+  private burnDps = 0;
 
   private speed = 0;
   private mods: WaveMods = NO_MODS;
@@ -93,6 +99,10 @@ export class Enemy {
     this.sprite.scale.set(scale);
     this.sprite.rotation = 0;
     this.sprite.alpha = 1;
+    this.sprite.tint = 0xffffff;
+    this.killedByBurn = false;
+    this.burnTimer = 0;
+    this.burnDps = 0;
     this.phase = 0;
     this.driftVx = 0;
     this.spin = 0;
@@ -188,7 +198,24 @@ export class Enemy {
     this.sprite.position.set(VIRTUAL_WIDTH / 2, -this.sprite.height / 2);
   }
 
+  /** Apply (or refresh) a burn DoT. Burns stack their dps and refresh duration. */
+  applyBurn(dps: number, duration: number): void {
+    this.burnDps += dps;
+    this.burnTimer = Math.max(this.burnTimer, duration);
+  }
+
   update(dt: number, ctx: EnemyContext): void {
+    if (this.burnTimer > 0) {
+      this.hp -= this.burnDps * dt;
+      this.burnTimer -= dt;
+      this.sprite.tint = 0xff7a3d;
+      if (this.hp <= 0) {
+        this.killedByBurn = true;
+        this.kill();
+        return;
+      }
+      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+    }
     switch (this.kind) {
       case "swarmer":
         this.phase += this.swayFrequency * dt;
@@ -288,6 +315,8 @@ export class EnemyPool {
   readonly view = new Container();
   private readonly all: Enemy[] = [];
   private readonly live: Enemy[] = [];
+  /** Enemies that died to a burn DoT this frame, for the scene to reward. */
+  private readonly burnKills: Enemy[] = [];
 
   private obtain(): Enemy {
     const found = this.all.find((e) => !e.active);
@@ -347,11 +376,24 @@ export class EnemyPool {
         continue;
       }
       e.update(dt, ctx);
+      if (!e.active) {
+        // Died during update — only burn does that here; the scene rewards it.
+        if (e.killedByBurn) this.burnKills.push(e);
+        this.live.splice(i, 1);
+        continue;
+      }
       if (e.sprite.y > VIRTUAL_HEIGHT + e.sprite.height) {
         e.kill();
         this.live.splice(i, 1);
       }
     }
+  }
+
+  /** Return (and clear) enemies killed by burn since the last call. */
+  drainBurnKills(): Enemy[] {
+    const out = this.burnKills.slice();
+    this.burnKills.length = 0;
+    return out;
   }
 
   get activeEnemies(): readonly Enemy[] {

@@ -123,6 +123,50 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
       p.modifiers.pierce += 1;
     },
   },
+  {
+    id: "homing",
+    name: "Homing",
+    description: "Bullets curve toward the nearest enemy",
+    rarity: MODIFIER_UPGRADES.homing.rarity,
+    cap: MODIFIER_UPGRADES.homing.cap,
+    weight: MODIFIER_UPGRADES.homing.weight,
+    apply: (p) => {
+      p.modifiers.homing += 1;
+    },
+  },
+  {
+    id: "explosive",
+    name: "Explosive",
+    description: "Bullets explode on impact",
+    rarity: MODIFIER_UPGRADES.explosive.rarity,
+    cap: MODIFIER_UPGRADES.explosive.cap,
+    weight: MODIFIER_UPGRADES.explosive.weight,
+    apply: (p) => {
+      p.modifiers.explosive += 1;
+    },
+  },
+  {
+    id: "burn",
+    name: "Burn",
+    description: "Hits set enemies on fire (damage over time)",
+    rarity: MODIFIER_UPGRADES.burn.rarity,
+    cap: MODIFIER_UPGRADES.burn.cap,
+    weight: MODIFIER_UPGRADES.burn.weight,
+    apply: (p) => {
+      p.modifiers.burn += 1;
+    },
+  },
+  {
+    id: "bounce",
+    name: "Bounce",
+    description: "Each hit sprays a shard in a random direction",
+    rarity: MODIFIER_UPGRADES.bounce.rarity,
+    cap: MODIFIER_UPGRADES.bounce.cap,
+    weight: MODIFIER_UPGRADES.bounce.weight,
+    apply: (p) => {
+      p.modifiers.bounce += 1;
+    },
+  },
 ];
 
 /**

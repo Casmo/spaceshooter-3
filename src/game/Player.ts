@@ -3,6 +3,7 @@ import {
   PLAYER,
   WEAPON,
   MODIFIERS,
+  MODIFIER_FX,
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
 } from "../config";
@@ -134,7 +135,7 @@ export class Player {
     this.fireVolley();
   }
 
-  /** Fire one volley, applying Multishot (count), Spread (arc) and Pierce. */
+  /** Fire one volley, applying every active modifier. */
   private fireVolley(): void {
     const m = this.modifiers;
     const count = 1 + m.multishot * MODIFIERS.multishotPerLevel;
@@ -142,6 +143,24 @@ export class Player {
 
     const visual = resolveBulletVisual(m);
     const texture = getTexture(visual.alias);
+
+    // Effect parameters derived from modifier levels.
+    const homing =
+      m.homing > 0
+        ? Math.min(
+            MODIFIER_FX.homing.maxTurnRate,
+            m.homing * MODIFIER_FX.homing.turnRatePerLevel,
+          )
+        : 0;
+    const explosiveRadius =
+      m.explosive > 0
+        ? MODIFIER_FX.explosive.baseRadius +
+          m.explosive * MODIFIER_FX.explosive.radiusPerLevel
+        : 0;
+    const explosiveDamage = this.damage * MODIFIER_FX.explosive.damageFactor;
+    const burnDps = m.burn * MODIFIER_FX.burn.dpsPerLevel;
+    const fragmentCount = m.bounce;
+    const fragmentDamage = this.damage * MODIFIER_FX.bounce.damageFactor;
 
     // Arc widens with Spread; even without it, multiple shots get a small gap.
     const spreadArc = m.spread * MODIFIERS.spreadDegPerLevel;
@@ -155,18 +174,23 @@ export class Player {
     for (let i = 0; i < count; i++) {
       // theta is the offset from straight-up (-y); 0 when a single shot.
       const theta = count === 1 ? 0 : -arcRad / 2 + arcRad * (i / (count - 1));
-      const vx = Math.sin(theta) * speed;
-      const vy = -Math.cos(theta) * speed;
-      this.bullets.spawn(
-        originX,
-        originY,
-        vx,
-        vy,
-        this.damage,
-        visual.tint,
+      this.bullets.spawn({
+        x: originX,
+        y: originY,
+        vx: Math.sin(theta) * speed,
+        vy: -Math.cos(theta) * speed,
+        damage: this.damage,
+        tint: visual.tint,
         pierce,
         texture,
-      );
+        homing,
+        explosiveRadius,
+        explosiveDamage,
+        burnDps,
+        burnDuration: MODIFIER_FX.burn.duration,
+        fragmentCount,
+        fragmentDamage,
+      });
     }
   }
 

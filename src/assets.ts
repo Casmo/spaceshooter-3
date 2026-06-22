@@ -23,6 +23,8 @@ const MANIFEST = {
   laser1: "/assets/laser-1.png",
   laser2: "/assets/laser-2.png",
   laser3: "/assets/laser-3.png",
+  rocket: "/assets/rocket.png",
+  fire: "/assets/fire.png",
 } as const;
 
 export type AssetAlias = keyof typeof MANIFEST;

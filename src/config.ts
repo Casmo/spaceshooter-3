@@ -294,3 +294,29 @@ export const MODIFIER_UPGRADES = {
   burn: { cap: 10, weight: 8, rarity: "uncommon" },
   bounce: { cap: 10, weight: 8, rarity: "uncommon" },
 } as const;
+
+/** Effect parameters for the #6b modifiers (Homing/Explosive/Burn/Bounce). */
+export const MODIFIER_FX = {
+  /** Homing turn rate (rad/s): scales per level up to a cap. */
+  homing: { turnRatePerLevel: 2.5, maxTurnRate: 11 },
+  /** Explosive AoE on impact. Damage is a fraction of the bullet's damage. */
+  explosive: { baseRadius: 70, radiusPerLevel: 16, damageFactor: 0.6 },
+  /** Burn damage-over-time. dps scales per level; duration is fixed. */
+  burn: { dpsPerLevel: 7, duration: 2 },
+  /** Bounce fragments: 1 per level, 50% damage, short-lived, non-recursive. */
+  bounce: { damageFactor: 0.5, life: 0.35, speed: 760, scale: 0.32 },
+  /** Trail puffs dropped by Homing (cyan) / Burn (orange) bullets. */
+  trail: { interval: 0.03, life: 0.25, scale: 0.5 },
+  /** Explosion flash visual. */
+  explosionFlash: { life: 0.3, growth: 2.4 },
+  /** Tints. */
+  tint: {
+    rocketExplosive: 0xff5544,
+    rocketHoming: 0x66ddff,
+    burn: 0xff8a3d,
+    homingTrail: 0x66ddff,
+    burnTrail: 0xff8a3d,
+    explosion: 0xff5533,
+    fragment: 0xcfd8ff,
+  },
+} as const;

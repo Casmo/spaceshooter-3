@@ -5,16 +5,18 @@ import {
   ENEMY_BULLET,
   STAR,
   XP,
+  MODIFIER_FX,
   VIRTUAL_WIDTH,
 } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
-import { ProjectilePool } from "../game/ProjectilePool";
+import { ProjectilePool, type Projectile } from "../game/ProjectilePool";
 import { EnemyPool, type Enemy, type EnemyContext } from "../game/EnemyPool";
 import { WaveManager } from "../game/WaveManager";
 import { StarPool } from "../game/StarPool";
+import { EffectsPool } from "../game/EffectsPool";
 import { Leveling } from "../game/Leveling";
 import { Upgrades, UPGRADE_DEFS, type UpgradeDef } from "../game/upgrades";
 import { UpgradePrompt } from "../ui/UpgradePrompt";
@@ -32,6 +34,7 @@ export class GameScene implements Scene {
   private readonly starfield = new Starfield();
   private readonly enemies = new EnemyPool();
   private readonly stars = new StarPool();
+  private readonly effects = new EffectsPool();
   private readonly bullets: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
@@ -41,6 +44,9 @@ export class GameScene implements Scene {
   private readonly banner: Text;
   private readonly debug: Text;
 
+  /** Throttle for emitting Homing/Burn trail puffs. */
+  private trailTimer = 0;
+
   /** Level-ups awaiting an upgrade choice (a big XP gain can stack several). */
   private pendingLevelUps = 0;
   private prompt?: UpgradePrompt;
@@ -49,7 +55,14 @@ export class GameScene implements Scene {
     playerX: 0,
     playerY: 0,
     fire: (x, y, vx, vy, damage) =>
-      this.enemyBullets.spawn(x, y, vx, vy, damage, damageTierColor(damage)),
+      this.enemyBullets.spawn({
+        x,
+        y,
+        vx,
+        vy,
+        damage,
+        tint: damageTierColor(damage),
+      }),
   };
 
   // Input state, in virtual coordinates.
@@ -87,6 +100,8 @@ export class GameScene implements Scene {
 
     this.player = new Player(this.bullets);
     this.view.addChild(this.player.sprite);
+
+    this.view.addChild(this.effects.view);
 
     this.banner = new Text({
       text: "",
@@ -139,8 +154,15 @@ export class GameScene implements Scene {
     this.enemyCtx.playerX = this.player.x;
     this.enemyCtx.playerY = this.player.y;
     this.enemies.update(dt, this.enemyCtx);
+
+    // Enemies killed by burn DoT this frame still reward XP / stars / splits.
+    for (const e of this.enemies.drainBurnKills()) this.destroyEnemy(e);
+
+    this.steerHoming(dt);
     this.bullets.update(dt);
     this.enemyBullets.update(dt);
+    this.effects.update(dt);
+    this.emitTrails(dt);
 
     this.resolveBulletHits();
     this.resolveEnemyBulletHits();
@@ -167,7 +189,8 @@ export class GameScene implements Scene {
   /**
    * Player bullets damage enemies. A bullet passes through up to its
    * `pierceRemaining` enemies (never hitting the same one twice) before it is
-   * consumed. Iterated bullet-outer so one shot can pierce several enemies.
+   * consumed. On each hit it also applies Burn, and queues Explosive blasts and
+   * Bounce fragments (resolved after the loop to avoid mutating mid-iteration).
    */
   private resolveBulletHits(): void {
     for (const bullet of this.bullets.activeProjectiles) {
@@ -177,7 +200,7 @@ export class GameScene implements Scene {
         if (!circlesOverlap(bullet, enemy)) continue;
 
         bullet.hits.add(enemy);
-        if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
+        this.applyBulletHit(bullet, enemy);
 
         if (bullet.pierceRemaining > 0) {
           bullet.pierceRemaining -= 1;
@@ -186,6 +209,146 @@ export class GameScene implements Scene {
           break;
         }
       }
+    }
+  }
+
+  /** Apply one bullet→enemy hit: direct damage, burn, explosion, fragments. */
+  private applyBulletHit(bullet: Projectile, enemy: Enemy): void {
+    if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
+    if (bullet.burnDps > 0)
+      enemy.applyBurn(bullet.burnDps, bullet.burnDuration);
+    if (bullet.explosiveRadius > 0) {
+      this.explode(
+        bullet.x,
+        bullet.y,
+        bullet.explosiveRadius,
+        bullet.explosiveDamage,
+        enemy,
+      );
+    }
+    if (bullet.fragmentCount > 0) {
+      this.spawnFragments(
+        bullet.x,
+        bullet.y,
+        bullet.fragmentCount,
+        bullet.fragmentDamage,
+        enemy,
+      );
+    }
+  }
+
+  /** Explosive AoE: damage every enemy in radius except the directly-hit one. */
+  private explode(
+    x: number,
+    y: number,
+    radius: number,
+    damage: number,
+    exclude: Enemy,
+  ): void {
+    this.effects.spawn(
+      "fire",
+      x,
+      y,
+      radius / 48,
+      (radius / 48) * MODIFIER_FX.explosionFlash.growth,
+      MODIFIER_FX.explosionFlash.life,
+      MODIFIER_FX.tint.explosion,
+    );
+    const r2 = radius * radius;
+    for (const enemy of this.enemies.activeEnemies) {
+      if (!enemy.active || enemy === exclude) continue;
+      const dx = enemy.x - x;
+      const dy = enemy.y - y;
+      if (dx * dx + dy * dy <= r2 && enemy.takeDamage(damage)) {
+        this.destroyEnemy(enemy);
+      }
+    }
+  }
+
+  /** Bounce: spray short-lived shards in random directions (non-recursive). */
+  private spawnFragments(
+    x: number,
+    y: number,
+    count: number,
+    damage: number,
+    source: Enemy,
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      this.bullets.spawn({
+        x,
+        y,
+        vx: Math.cos(angle) * MODIFIER_FX.bounce.speed,
+        vy: Math.sin(angle) * MODIFIER_FX.bounce.speed,
+        damage,
+        tint: MODIFIER_FX.tint.fragment,
+        texture: getTexture("bullet"),
+        scale: MODIFIER_FX.bounce.scale,
+        life: MODIFIER_FX.bounce.life,
+        hitsExclude: source, // never re-hit the enemy that spawned it
+      });
+    }
+  }
+
+  /** Steer Homing bullets toward the nearest enemy, preserving their speed. */
+  private steerHoming(dt: number): void {
+    for (const bullet of this.bullets.activeProjectiles) {
+      if (!bullet.active || bullet.homing <= 0) continue;
+      const target = this.nearestEnemy(bullet.x, bullet.y);
+      if (!target) continue;
+      const desired = Math.atan2(target.y - bullet.y, target.x - bullet.x);
+      const current = Math.atan2(bullet.vy, bullet.vx);
+      let diff = desired - current;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const maxTurn = bullet.homing * dt;
+      const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+      const angle = current + turn;
+      const speed = Math.hypot(bullet.vx, bullet.vy);
+      bullet.vx = Math.cos(angle) * speed;
+      bullet.vy = Math.sin(angle) * speed;
+    }
+  }
+
+  private nearestEnemy(x: number, y: number): Enemy | undefined {
+    let best: Enemy | undefined;
+    let bestD = Infinity;
+    for (const enemy of this.enemies.activeEnemies) {
+      if (!enemy.active) continue;
+      const dx = enemy.x - x;
+      const dy = enemy.y - y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = enemy;
+      }
+    }
+    return best;
+  }
+
+  /** Drop fading puffs behind Homing (cyan) and Burn (orange) bullets. */
+  private emitTrails(dt: number): void {
+    this.trailTimer -= dt;
+    if (this.trailTimer > 0) return;
+    this.trailTimer = MODIFIER_FX.trail.interval;
+    for (const bullet of this.bullets.activeProjectiles) {
+      if (!bullet.active) continue;
+      const tint =
+        bullet.burnDps > 0
+          ? MODIFIER_FX.tint.burnTrail
+          : bullet.homing > 0
+            ? MODIFIER_FX.tint.homingTrail
+            : undefined;
+      if (tint === undefined) continue;
+      this.effects.spawn(
+        "fire",
+        bullet.x,
+        bullet.y,
+        MODIFIER_FX.trail.scale,
+        MODIFIER_FX.trail.scale * 0.4,
+        MODIFIER_FX.trail.life,
+        tint,
+      );
     }
   }
 
