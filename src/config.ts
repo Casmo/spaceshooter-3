@@ -44,6 +44,8 @@ export const PLAYER = {
   iframesRespawn: 2.0,
   /** Blink toggle interval while invulnerable, seconds. */
   blinkInterval: 0.1,
+  /** Base star-attraction radius (virtual px). Pickup Range upgrade raises it. */
+  basePickupRange: 90,
 } as const;
 
 /** Base weapon (the single gun; modifiers come in a later issue). */
@@ -207,4 +209,63 @@ export const PROJECTILES = {
   poolInitial: 256,
   /** Off-screen margin (virtual px) beyond which a projectile despawns. */
   despawnMargin: 80,
+} as const;
+
+/** XP awarded per kill (by enemy type) and the level-up threshold curve.
+ *  NOTE: the curve constants are placeholders — issue #10 tunes them toward
+ *  ~30 level-ups for an average run / ~50 for a great run. */
+export const XP = {
+  swarmer: 1,
+  gunner: 3,
+  asteroidLarge: 4,
+  asteroidMedium: 2,
+  asteroidSmall: 1,
+  miniboss: 25,
+  /** XP granted by collecting a Star. */
+  star: 10,
+  /** First level-up needs this much XP. */
+  baseThreshold: 5,
+  /** Each level multiplies the threshold by this (geometric growth). */
+  growth: 1.18,
+} as const;
+
+/** Star pickup: the only collectible in v1 (XP only). */
+export const STAR = {
+  scale: 0.5,
+  /** Seconds before an uncollected star expires. */
+  lifetime: 5,
+  /** Drop chance per normal kill (mini-boss always drops one). */
+  dropChance: 0.05,
+  /** Fly-over collection radius (virtual px). */
+  collectRadius: 70,
+  /** Attraction smoothing toward the ship while within pickup range, per sec. */
+  magnetEase: 9,
+  /** Blink during the final N seconds before expiry. */
+  blinkBefore: 1.5,
+} as const;
+
+/** Upgrade rarity tiers and their card colors. */
+export type Rarity = "common" | "uncommon" | "rare" | "veryRare";
+export const RARITY_COLORS: Record<Rarity, number> = {
+  common: 0x9aa0a6, // gray
+  uncommon: 0x57d957, // green
+  rare: 0xff9933, // orange
+  veryRare: 0xb066ff, // purple
+};
+
+/** The non-modifier upgrade pool (bullet modifiers are added in #6).
+ *  cap: 0 = unlimited. At least 3 unlimited types keep the 3-card draw full. */
+export const UPGRADES = {
+  damage: { cap: 0, weight: 10, rarity: "common", amount: 6 },
+  moveSpeed: {
+    cap: 10,
+    weight: 10,
+    rarity: "common",
+    speedAmount: 120,
+    responseAmount: 1,
+  },
+  fireRate: { cap: 0, weight: 10, rarity: "common", mult: 0.95 },
+  maxHp: { cap: 0, weight: 3, rarity: "rare", amount: 25 },
+  extraLife: { cap: 0, weight: 1, rarity: "veryRare" },
+  pickupRange: { cap: 10, weight: 6, rarity: "uncommon", amount: 120 },
 } as const;

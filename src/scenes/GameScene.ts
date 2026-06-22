@@ -1,33 +1,50 @@
 import { Container, Text, type FederatedPointerEvent } from "pixi.js";
-import { PLAYER, WEAPON, ENEMY_BULLET, VIRTUAL_WIDTH } from "../config";
+import {
+  PLAYER,
+  WEAPON,
+  ENEMY_BULLET,
+  STAR,
+  XP,
+  VIRTUAL_WIDTH,
+} from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
 import { ProjectilePool } from "../game/ProjectilePool";
-import { EnemyPool, type EnemyContext } from "../game/EnemyPool";
+import { EnemyPool, type Enemy, type EnemyContext } from "../game/EnemyPool";
 import { WaveManager } from "../game/WaveManager";
+import { StarPool } from "../game/StarPool";
+import { Leveling } from "../game/Leveling";
+import { Upgrades, UPGRADE_DEFS, type UpgradeDef } from "../game/upgrades";
+import { UpgradePrompt } from "../ui/UpgradePrompt";
 import { damageTierColor } from "../game/colors";
 import { GameOverScene } from "./GameOverScene";
 
 /**
- * Gameplay scene. Owns the starfield, player ship, both projectile pools, the
- * enemy pool, and the wave manager; resolves collisions and ends the run when
- * lives are spent. The real HUD arrives in #7 — for now a small debug readout
- * shows HP / lives / wave so the loop is verifiable.
+ * Gameplay scene. Owns the starfield, player ship, projectile/enemy/star pools,
+ * the wave manager, and the XP/upgrade loop; resolves collisions, awards XP,
+ * shows the (paused) level-up prompt, and ends the run when lives are spent.
+ * The real HUD arrives in #7 — a small debug readout stands in for now.
  */
 export class GameScene implements Scene {
   readonly view = new Container();
   private readonly starfield = new Starfield();
   private readonly enemies = new EnemyPool();
+  private readonly stars = new StarPool();
   private readonly bullets: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
   private readonly waves = new WaveManager(this.enemies);
+  private readonly leveling = new Leveling(XP.baseThreshold, XP.growth);
+  private readonly upgrades = new Upgrades(UPGRADE_DEFS);
   private readonly banner: Text;
   private readonly debug: Text;
 
-  // Reused each frame so enemies can shoot at the player.
+  /** Level-ups awaiting an upgrade choice (a big XP gain can stack several). */
+  private pendingLevelUps = 0;
+  private prompt?: UpgradePrompt;
+
   private readonly enemyCtx: EnemyContext = {
     playerX: 0,
     playerY: 0,
@@ -52,6 +69,7 @@ export class GameScene implements Scene {
   constructor(private readonly manager: SceneManager) {
     this.view.addChild(this.starfield.view);
     this.view.addChild(this.enemies.view);
+    this.view.addChild(this.stars.view);
 
     this.bullets = new ProjectilePool(
       getTexture("bullet"),
@@ -110,6 +128,9 @@ export class GameScene implements Scene {
   }
 
   update(dt: number): void {
+    // While the level-up prompt is open the whole game is paused.
+    if (this.prompt) return;
+
     this.starfield.update(dt);
     this.waves.update(dt);
 
@@ -125,11 +146,22 @@ export class GameScene implements Scene {
     this.resolveEnemyBulletHits();
     this.resolveContactHits();
 
+    this.awardXp(
+      this.stars.update(
+        dt,
+        this.player.x,
+        this.player.y,
+        this.player.pickupRange,
+      ),
+    );
+
     this.updateOverlay();
 
     if (this.player.isGameOver) {
       this.manager.changeScene(new GameOverScene(this.manager));
+      return;
     }
+    if (this.pendingLevelUps > 0) this.showPrompt();
   }
 
   /** Player bullets damage enemies; a bullet is consumed on its first hit. */
@@ -141,7 +173,7 @@ export class GameScene implements Scene {
         if (circlesOverlap(bullet, enemy)) {
           bullet.kill();
           if (enemy.takeDamage(bullet.damage)) {
-            this.enemies.handleDeath(enemy);
+            this.destroyEnemy(enemy);
             break;
           }
         }
@@ -169,16 +201,49 @@ export class GameScene implements Scene {
       if (!enemy.active) continue;
       if (pointInRadius(enemy.x, enemy.y, enemy.radius, this.player)) {
         enemy.kill();
+        this.destroyEnemy(enemy);
         this.player.takeHit(enemy.contactDamage);
         return;
       }
     }
   }
 
+  /** Award XP, maybe drop a Star, and split asteroids when an enemy is killed. */
+  private destroyEnemy(enemy: Enemy): void {
+    this.awardXp(enemy.xpValue);
+    const guaranteed = enemy.kind === "miniboss";
+    if (guaranteed || Math.random() < STAR.dropChance) {
+      this.stars.spawn(enemy.x, enemy.y);
+    }
+    this.enemies.handleDeath(enemy);
+  }
+
+  private awardXp(amount: number): void {
+    if (amount > 0) this.pendingLevelUps += this.leveling.addXp(amount);
+  }
+
+  /** Open the level-up prompt for the next pending level-up (pauses the game). */
+  private showPrompt(): void {
+    const choices = this.upgrades.draw(3);
+    this.prompt = new UpgradePrompt(choices, (def) => this.applyPick(def));
+    this.view.addChild(this.prompt.view);
+  }
+
+  private applyPick(def: UpgradeDef): void {
+    this.upgrades.apply(def, this.player);
+    this.prompt?.view.destroy({ children: true });
+    this.prompt = undefined;
+    this.pendingLevelUps -= 1;
+    if (this.pendingLevelUps > 0) this.showPrompt();
+  }
+
   private updateOverlay(): void {
     this.banner.visible = this.waves.inBreather;
     if (this.waves.inBreather) this.banner.text = this.waves.bannerText;
-    this.debug.text = `HP ${Math.max(0, Math.ceil(this.player.hp))}   Lives ${this.player.lives}   Wave ${this.waves.currentWave}`;
+    this.debug.text =
+      `HP ${Math.max(0, Math.ceil(this.player.hp))}/${this.player.maxHp}   ` +
+      `Lives ${this.player.lives}   Wave ${this.waves.currentWave}   ` +
+      `Lv ${this.leveling.level}`;
   }
 
   destroy(): void {
