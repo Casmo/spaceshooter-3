@@ -1,0 +1,3 @@
+# Fixed 16:9 landscape virtual resolution, scaled and letterboxed
+
+The game renders to a fixed **1920×1080 (16:9 landscape)** virtual canvas, scaled to fit the window with letterboxing, even though it is a *vertical*-scrolling shmup. A future reader may expect a portrait field; we chose landscape deliberately at the user's request — it gives wide horizontal dodging room (the mouse-follow ship moves freely), matches typical monitor and future nw.js window shapes, and a fixed virtual resolution keeps gameplay balance identical on every screen. Content still scrolls top→bottom (starfield down, enemies enter from the top, player near the bottom). HUD overlays the corners rather than living in side bars.
