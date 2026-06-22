@@ -18,7 +18,7 @@ export const STARFIELD = {
   starsBSpeed: 55,
 } as const;
 
-/** Player ship movement and placement. */
+/** Player ship movement, placement, and survival. */
 export const PLAYER = {
   /** Display scale applied to SpaceShip.png. */
   scale: 0.5,
@@ -31,6 +31,19 @@ export const PLAYER = {
   /** Hard cap on how fast the ship can travel, virtual px/second. The ship
    *  "chases" a far cursor at this speed; the Move Speed upgrade raises it. */
   maxSpeed: 1600,
+  /** Starting max HP for a fresh run. HP upgrade raises this later. */
+  maxHp: 100,
+  /** Starting lives for a fresh run. */
+  startLives: 3,
+  /** Core hitbox radius as a fraction of the ship's smaller half-dimension —
+   *  much smaller than the sprite so grazing feels fair. */
+  hitboxRadiusFactor: 0.28,
+  /** Invulnerability after taking a hit, seconds. */
+  iframesHit: 1.0,
+  /** Invulnerability after respawning, seconds. */
+  iframesRespawn: 2.0,
+  /** Blink toggle interval while invulnerable, seconds. */
+  blinkInterval: 0.1,
 } as const;
 
 /** Base weapon (the single gun; modifiers come in a later issue). */
@@ -41,6 +54,27 @@ export const WEAPON = {
   bulletSpeed: 1400,
   /** Display scale applied to bullet.png. */
   bulletScale: 0.4,
+  /** Damage per bullet. Shooting Power upgrade raises this later. */
+  damage: 12,
+  /** Collision radius of a bullet as a fraction of its half-width. */
+  bulletRadiusFactor: 0.8,
+} as const;
+
+/** Swarmer enemy (insect-1): fast, low HP, contact-only. */
+export const SWARMER = {
+  scale: 0.7,
+  hp: 24,
+  /** HP removed from the player on contact. */
+  contactDamage: 20,
+  /** Downward travel speed, virtual px/second. */
+  speed: 260,
+  /** Horizontal sine sway amplitude (virtual px) and frequency (Hz-ish). */
+  swayAmplitude: 130,
+  swayFrequency: 1.4,
+  /** Collision radius as a fraction of the sprite half-width. */
+  radiusFactor: 0.7,
+  /** Seconds between spawns (temporary; replaced by waves in #4). */
+  spawnInterval: 0.7,
 } as const;
 
 /** Projectile pooling and the safety cap. */
