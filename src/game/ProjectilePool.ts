@@ -11,12 +11,24 @@ export class Projectile {
   radius = 0;
   /** Damage dealt to whatever this projectile hits. */
   damage = 0;
+  /** Remaining enemies this projectile can pass through (Pierce modifier). */
+  pierceRemaining = 0;
+  /** Targets already hit, so a piercing shot never double-hits the same one. */
+  readonly hits = new Set<unknown>();
 
-  constructor(texture: Texture, scale: number) {
-    this.sprite = new Sprite(texture);
+  constructor(
+    private readonly baseTexture: Texture,
+    scale: number,
+  ) {
+    this.sprite = new Sprite(baseTexture);
     this.sprite.anchor.set(0.5);
     this.sprite.scale.set(scale);
     this.sprite.visible = false;
+  }
+
+  /** Default texture for this pool (used when a spawn passes no override). */
+  get defaultTexture(): Texture {
+    return this.baseTexture;
   }
 
   get x(): number {
@@ -64,7 +76,11 @@ export class ProjectilePool {
     return p;
   }
 
-  /** Spawn a projectile at (x, y) with velocity (virtual px/s), damage, and tint. */
+  /**
+   * Spawn a projectile at (x, y) with velocity (virtual px/s), damage, and tint.
+   * `pierce` is how many enemies it can pass through; `texture` overrides the
+   * pool's default sprite (used by the modifier visual system).
+   */
   spawn(
     x: number,
     y: number,
@@ -72,6 +88,8 @@ export class ProjectilePool {
     vy: number,
     damage = 0,
     tint = 0xffffff,
+    pierce = 0,
+    texture?: Texture,
   ): void {
     // Enforce the hard cap by recycling the oldest live projectile.
     if (this.live.length >= PROJECTILES.maxLive) {
@@ -88,6 +106,9 @@ export class ProjectilePool {
     p.damage = damage;
     p.radius = this.radius;
     p.sprite.tint = tint;
+    p.sprite.texture = texture ?? p.defaultTexture;
+    p.pierceRemaining = pierce;
+    p.hits.clear();
     this.live.push(p);
   }
 

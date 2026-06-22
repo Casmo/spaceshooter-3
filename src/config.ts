@@ -269,3 +269,28 @@ export const UPGRADES = {
   extraLife: { cap: 0, weight: 1, rarity: "veryRare" },
   pickupRange: { cap: 10, weight: 6, rarity: "uncommon", amount: 120 },
 } as const;
+
+/** Bullet-modifier mechanics. All modifiers stack orthogonally on the one gun. */
+export const MODIFIERS = {
+  /** +N projectiles per Multishot level. */
+  multishotPerLevel: 1,
+  /** Arc (degrees) added per Spread level. */
+  spreadDegPerLevel: 12,
+  /** Minimum gap (degrees) between adjacent multishot projectiles so they don't
+   *  perfectly overlap even with no Spread. */
+  multishotMinGapDeg: 8,
+  /** +N enemies pierced per Pierce level. */
+  piercePerLevel: 1,
+} as const;
+
+/** The 7 bullet modifiers as upgrade cards (all uncommon/green, cap 10).
+ *  Multishot/Spread/Pierce ship in #6a; the rest are wired in #6b. */
+export const MODIFIER_UPGRADES = {
+  multishot: { cap: 10, weight: 8, rarity: "uncommon" },
+  spread: { cap: 10, weight: 8, rarity: "uncommon" },
+  pierce: { cap: 10, weight: 8, rarity: "uncommon" },
+  homing: { cap: 10, weight: 8, rarity: "uncommon" },
+  explosive: { cap: 10, weight: 8, rarity: "uncommon" },
+  burn: { cap: 10, weight: 8, rarity: "uncommon" },
+  bounce: { cap: 10, weight: 8, rarity: "uncommon" },
+} as const;

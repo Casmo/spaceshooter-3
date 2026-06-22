@@ -164,18 +164,26 @@ export class GameScene implements Scene {
     if (this.pendingLevelUps > 0) this.showPrompt();
   }
 
-  /** Player bullets damage enemies; a bullet is consumed on its first hit. */
+  /**
+   * Player bullets damage enemies. A bullet passes through up to its
+   * `pierceRemaining` enemies (never hitting the same one twice) before it is
+   * consumed. Iterated bullet-outer so one shot can pierce several enemies.
+   */
   private resolveBulletHits(): void {
-    for (const enemy of this.enemies.activeEnemies) {
-      if (!enemy.active) continue;
-      for (const bullet of this.bullets.activeProjectiles) {
-        if (!bullet.active) continue;
-        if (circlesOverlap(bullet, enemy)) {
+    for (const bullet of this.bullets.activeProjectiles) {
+      if (!bullet.active) continue;
+      for (const enemy of this.enemies.activeEnemies) {
+        if (!enemy.active || bullet.hits.has(enemy)) continue;
+        if (!circlesOverlap(bullet, enemy)) continue;
+
+        bullet.hits.add(enemy);
+        if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
+
+        if (bullet.pierceRemaining > 0) {
+          bullet.pierceRemaining -= 1;
+        } else {
           bullet.kill();
-          if (enemy.takeDamage(bullet.damage)) {
-            this.destroyEnemy(enemy);
-            break;
-          }
+          break;
         }
       }
     }
