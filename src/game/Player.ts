@@ -17,6 +17,13 @@ export class Player {
   /** Core collision radius — much smaller than the sprite. */
   readonly hitRadius: number;
 
+  // Upgradable stats (mutated by the upgrade system).
+  damage: number = WEAPON.damage;
+  cooldown: number = WEAPON.cooldown;
+  maxSpeed: number = PLAYER.maxSpeed;
+  followResponse: number = PLAYER.followResponse;
+  pickupRange: number = PLAYER.basePickupRange;
+
   /** True once all lives are spent; the scene should end the run. */
   private gameOver = false;
   /** Seconds of invulnerability remaining. */
@@ -85,13 +92,13 @@ export class Player {
     const dy = targetY - this.sprite.y;
 
     // Frame-rate independent exponential smoothing toward the cursor.
-    const ease = 1 - Math.exp(-PLAYER.followResponse * dt);
+    const ease = 1 - Math.exp(-this.followResponse * dt);
     let stepX = dx * ease;
     let stepY = dy * ease;
 
     // Clamp the step to the max speed so a far cursor is chased, not teleported.
     const stepLen = Math.hypot(stepX, stepY);
-    const maxStep = PLAYER.maxSpeed * dt;
+    const maxStep = this.maxSpeed * dt;
     if (stepLen > maxStep && stepLen > 0) {
       const k = maxStep / stepLen;
       stepX *= k;
@@ -118,9 +125,9 @@ export class Player {
         this.sprite.y - this.halfHeight,
         0,
         -WEAPON.bulletSpeed,
-        WEAPON.damage,
+        this.damage,
       );
-      this.fireTimer = WEAPON.cooldown;
+      this.fireTimer = this.cooldown;
     }
   }
 
