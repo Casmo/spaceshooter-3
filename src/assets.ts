@@ -11,6 +11,7 @@ const MANIFEST = {
   starsB: "/assets/Stars-B.png",
   ship: "/assets/SpaceShip.png",
   star: "/assets/star.png",
+  bullet: "/assets/bullet.png",
 } as const;
 
 export type AssetAlias = keyof typeof MANIFEST;
