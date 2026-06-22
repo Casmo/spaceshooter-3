@@ -18,6 +18,11 @@ const MANIFEST = {
   asteroidLarge: "/assets/large-A.png",
   asteroidMedium: "/assets/medium-A.png",
   asteroidSmall: "/assets/small-A.png",
+  // Player projectile skins selected by active modifiers.
+  plasm: "/assets/plasm.png",
+  laser1: "/assets/laser-1.png",
+  laser2: "/assets/laser-2.png",
+  laser3: "/assets/laser-3.png",
 } as const;
 
 export type AssetAlias = keyof typeof MANIFEST;

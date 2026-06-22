@@ -1,7 +1,15 @@
 import { Sprite } from "pixi.js";
-import { PLAYER, WEAPON, VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import {
+  PLAYER,
+  WEAPON,
+  MODIFIERS,
+  VIRTUAL_WIDTH,
+  VIRTUAL_HEIGHT,
+} from "../config";
 import { getTexture } from "../assets";
 import { ProjectilePool } from "./ProjectilePool";
+import { createModifiers, type WeaponModifiers } from "./WeaponModifiers";
+import { resolveBulletVisual } from "./weaponVisual";
 
 /**
  * The player ship. Eased-follows the cursor (smoothed, capped by a max speed so
@@ -23,6 +31,8 @@ export class Player {
   maxSpeed: number = PLAYER.maxSpeed;
   followResponse: number = PLAYER.followResponse;
   pickupRange: number = PLAYER.basePickupRange;
+  /** Bullet-modifier levels; mutated by the upgrade system, read when firing. */
+  readonly modifiers: WeaponModifiers = createModifiers();
 
   /** True once all lives are spent; the scene should end the run. */
   private gameOver = false;
@@ -119,15 +129,44 @@ export class Player {
 
   private shoot(dt: number, firing: boolean): void {
     this.fireTimer -= dt;
-    if (firing && this.fireTimer <= 0) {
+    if (!firing || this.fireTimer > 0) return;
+    this.fireTimer = this.cooldown;
+    this.fireVolley();
+  }
+
+  /** Fire one volley, applying Multishot (count), Spread (arc) and Pierce. */
+  private fireVolley(): void {
+    const m = this.modifiers;
+    const count = 1 + m.multishot * MODIFIERS.multishotPerLevel;
+    const pierce = m.pierce * MODIFIERS.piercePerLevel;
+
+    const visual = resolveBulletVisual(m);
+    const texture = getTexture(visual.alias);
+
+    // Arc widens with Spread; even without it, multiple shots get a small gap.
+    const spreadArc = m.spread * MODIFIERS.spreadDegPerLevel;
+    const minArc = count > 1 ? MODIFIERS.multishotMinGapDeg * (count - 1) : 0;
+    const arcRad = (Math.max(spreadArc, minArc) * Math.PI) / 180;
+
+    const originX = this.sprite.x;
+    const originY = this.sprite.y - this.halfHeight;
+    const speed = WEAPON.bulletSpeed;
+
+    for (let i = 0; i < count; i++) {
+      // theta is the offset from straight-up (-y); 0 when a single shot.
+      const theta = count === 1 ? 0 : -arcRad / 2 + arcRad * (i / (count - 1));
+      const vx = Math.sin(theta) * speed;
+      const vy = -Math.cos(theta) * speed;
       this.bullets.spawn(
-        this.sprite.x,
-        this.sprite.y - this.halfHeight,
-        0,
-        -WEAPON.bulletSpeed,
+        originX,
+        originY,
+        vx,
+        vy,
         this.damage,
+        visual.tint,
+        pierce,
+        texture,
       );
-      this.fireTimer = this.cooldown;
     }
   }
 

@@ -1,4 +1,4 @@
-import { UPGRADES, type Rarity } from "../config";
+import { UPGRADES, MODIFIER_UPGRADES, type Rarity } from "../config";
 import { Player } from "./Player";
 
 /** A single offerable upgrade. `cap` of 0 means unlimited. */
@@ -87,6 +87,40 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     weight: UPGRADES.pickupRange.weight,
     apply: (p) => {
       p.pickupRange += UPGRADES.pickupRange.amount;
+    },
+  },
+  // --- Bullet modifiers (#6a). The rest (Homing/Explosive/Burn/Bounce) land in #6b. ---
+  {
+    id: "multishot",
+    name: "Multishot",
+    description: "+1 projectile per shot",
+    rarity: MODIFIER_UPGRADES.multishot.rarity,
+    cap: MODIFIER_UPGRADES.multishot.cap,
+    weight: MODIFIER_UPGRADES.multishot.weight,
+    apply: (p) => {
+      p.modifiers.multishot += 1;
+    },
+  },
+  {
+    id: "spread",
+    name: "Spread",
+    description: "Fan your shots out wider",
+    rarity: MODIFIER_UPGRADES.spread.rarity,
+    cap: MODIFIER_UPGRADES.spread.cap,
+    weight: MODIFIER_UPGRADES.spread.weight,
+    apply: (p) => {
+      p.modifiers.spread += 1;
+    },
+  },
+  {
+    id: "pierce",
+    name: "Piercing",
+    description: "Bullets pass through +1 enemy",
+    rarity: MODIFIER_UPGRADES.pierce.rarity,
+    cap: MODIFIER_UPGRADES.pierce.cap,
+    weight: MODIFIER_UPGRADES.pierce.weight,
+    apply: (p) => {
+      p.modifiers.pierce += 1;
     },
   },
 ];
