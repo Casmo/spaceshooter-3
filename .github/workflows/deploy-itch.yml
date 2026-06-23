@@ -11,7 +11,7 @@ on:
       - v*
 jobs:
   deploy:
-    name: Upload to Itch
+    name: Deploy - Itch.io ${{ matrix.template }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -19,7 +19,6 @@ jobs:
         channel:
           - windows
           - webgl
-    name: Deploy - Itch.io ${{ matrix.template }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
