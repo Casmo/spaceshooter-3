@@ -5,6 +5,7 @@ import {
   ENEMY_BULLET,
   STAR,
   XP,
+  SCORE,
   MODIFIER_FX,
   VIRTUAL_WIDTH,
 } from "../config";
@@ -19,15 +20,16 @@ import { StarPool } from "../game/StarPool";
 import { EffectsPool } from "../game/EffectsPool";
 import { Leveling } from "../game/Leveling";
 import { Upgrades, UPGRADE_DEFS, type UpgradeDef } from "../game/upgrades";
+import { emptyRun, loadStats, recordRun, type RunStats } from "../game/Stats";
 import { UpgradePrompt } from "../ui/UpgradePrompt";
+import { Hud } from "../ui/Hud";
 import { damageTierColor } from "../game/colors";
 import { GameOverScene } from "./GameOverScene";
 
 /**
- * Gameplay scene. Owns the starfield, player ship, projectile/enemy/star pools,
- * the wave manager, and the XP/upgrade loop; resolves collisions, awards XP,
- * shows the (paused) level-up prompt, and ends the run when lives are spent.
- * The real HUD arrives in #7 — a small debug readout stands in for now.
+ * Gameplay scene. Owns the playfield (player, pools, waves), the XP/upgrade
+ * loop, scoring, and the HUD; resolves collisions, shows the paused level-up
+ * prompt, and ends the run — recording stats — when lives are spent.
  */
 export class GameScene implements Scene {
   readonly view = new Container();
@@ -38,11 +40,15 @@ export class GameScene implements Scene {
   private readonly bullets: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
-  private readonly waves = new WaveManager(this.enemies);
+  private readonly waves: WaveManager;
   private readonly leveling = new Leveling(XP.baseThreshold, XP.growth);
   private readonly upgrades = new Upgrades(UPGRADE_DEFS);
+  private readonly hud = new Hud();
   private readonly banner: Text;
-  private readonly debug: Text;
+
+  /** This run's accumulating stats; the best score is loaded once for the HUD. */
+  private readonly run: RunStats = emptyRun();
+  private readonly bestScore = loadStats().bestScore;
 
   /** Throttle for emitting Homing/Burn trail puffs. */
   private trailTimer = 0;
@@ -80,6 +86,10 @@ export class GameScene implements Scene {
   };
 
   constructor(private readonly manager: SceneManager) {
+    this.waves = new WaveManager(this.enemies, (wave) => {
+      this.run.score += SCORE.waveClearBase * wave;
+    });
+
     this.view.addChild(this.starfield.view);
     this.view.addChild(this.enemies.view);
     this.view.addChild(this.stars.view);
@@ -114,14 +124,9 @@ export class GameScene implements Scene {
     });
     this.banner.anchor.set(0.5);
     this.banner.position.set(VIRTUAL_WIDTH / 2, 160);
-    this.view.addChild(this.banner);
 
-    this.debug = new Text({
-      text: "",
-      style: { fill: 0xffffff, fontSize: 28, fontFamily: "Arial" },
-    });
-    this.debug.position.set(24, 20);
-    this.view.addChild(this.debug);
+    this.view.addChild(this.hud.view);
+    this.view.addChild(this.banner);
 
     this.bindInput();
   }
@@ -145,6 +150,8 @@ export class GameScene implements Scene {
   update(dt: number): void {
     // While the level-up prompt is open the whole game is paused.
     if (this.prompt) return;
+
+    this.run.timeSurvived += dt;
 
     this.starfield.update(dt);
     this.waves.update(dt);
@@ -180,10 +187,19 @@ export class GameScene implements Scene {
     this.updateOverlay();
 
     if (this.player.isGameOver) {
-      this.manager.changeScene(new GameOverScene(this.manager));
+      this.endRun();
       return;
     }
     if (this.pendingLevelUps > 0) this.showPrompt();
+  }
+
+  /** Finalize run stats, persist them, and go to the game-over screen. */
+  private endRun(): void {
+    this.run.wave = this.waves.currentWave;
+    this.run.level = this.leveling.level;
+    this.run.bulletsFired = this.player.bulletsFired;
+    const record = recordRun(this.run);
+    this.manager.changeScene(new GameOverScene(this.manager, this.run, record));
   }
 
   /**
@@ -379,9 +395,11 @@ export class GameScene implements Scene {
     }
   }
 
-  /** Award XP, maybe drop a Star, and split asteroids when an enemy is killed. */
+  /** Award XP + score, maybe drop a Star, and split asteroids on a kill. */
   private destroyEnemy(enemy: Enemy): void {
     this.awardXp(enemy.xpValue);
+    this.run.score += enemy.scoreValue;
+    this.run.kills += 1;
     const guaranteed = enemy.kind === "miniboss";
     if (guaranteed || Math.random() < STAR.dropChance) {
       this.stars.spawn(enemy.x, enemy.y);
@@ -411,10 +429,16 @@ export class GameScene implements Scene {
   private updateOverlay(): void {
     this.banner.visible = this.waves.inBreather;
     if (this.waves.inBreather) this.banner.text = this.waves.bannerText;
-    this.debug.text =
-      `HP ${Math.max(0, Math.ceil(this.player.hp))}/${this.player.maxHp}   ` +
-      `Lives ${this.player.lives}   Wave ${this.waves.currentWave}   ` +
-      `Lv ${this.leveling.level}`;
+    this.hud.update({
+      score: this.run.score,
+      bestScore: this.bestScore,
+      wave: this.waves.currentWave,
+      lives: this.player.lives,
+      hp: this.player.hp,
+      maxHp: this.player.maxHp,
+      level: this.leveling.level,
+      xpProgress: this.leveling.progress,
+    });
   }
 
   destroy(): void {

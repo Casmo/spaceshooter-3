@@ -19,7 +19,11 @@ export class WaveManager {
   /** How many mini-bosses have appeared (for HP scaling). */
   private miniBossAppearances = 0;
 
-  constructor(private readonly enemies: EnemyPool) {}
+  /** @param onWaveCleared called with the wave number when a wave is cleared. */
+  constructor(
+    private readonly enemies: EnemyPool,
+    private readonly onWaveCleared?: (wave: number) => void,
+  ) {}
 
   /** Current wave (0 before the first wave begins). */
   get currentWave(): number {
@@ -47,6 +51,7 @@ export class WaveManager {
         this.timer = this.spawnInterval;
       }
     } else if (this.enemies.liveCount === 0) {
+      this.onWaveCleared?.(this.waveNumber);
       this.phase = "breather";
       this.timer = WAVES.breatherSeconds;
     }

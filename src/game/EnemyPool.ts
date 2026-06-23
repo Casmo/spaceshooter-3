@@ -9,6 +9,7 @@ import {
   ENEMY_BULLET,
   WAVES,
   XP,
+  SCORE,
   type AsteroidSize,
 } from "../config";
 import { getTexture, type AssetAlias } from "../assets";
@@ -42,6 +43,8 @@ export class Enemy {
   radius = 0;
   /** XP awarded to the player when this enemy is destroyed. */
   xpValue = 0;
+  /** Score awarded when this enemy is destroyed. */
+  scoreValue = 0;
   /** Set when a burn DoT (not a bullet/contact) lands the killing blow. */
   killedByBurn = false;
 
@@ -120,6 +123,7 @@ export class Enemy {
     this.kind = "swarmer";
     this.mods = mods;
     this.xpValue = XP.swarmer;
+    this.scoreValue = SCORE.swarmer;
     this.hp = SWARMER.hp * mods.hpMult;
     this.contactDamage = SWARMER.contactDamage;
     this.speed = SWARMER.speed * mods.speedMult;
@@ -135,6 +139,7 @@ export class Enemy {
     this.kind = "gunner";
     this.mods = mods;
     this.xpValue = XP.gunner;
+    this.scoreValue = SCORE.gunner;
     this.hp = GUNNER.hp * mods.hpMult;
     this.contactDamage = GUNNER.contactDamage;
     this.speed = GUNNER.speed * mods.speedMult;
@@ -162,6 +167,12 @@ export class Enemy {
         : size === "medium"
           ? XP.asteroidMedium
           : XP.asteroidSmall;
+    this.scoreValue =
+      size === "large"
+        ? SCORE.asteroidLarge
+        : size === "medium"
+          ? SCORE.asteroidMedium
+          : SCORE.asteroidSmall;
     this.hp = c.hp * mods.hpMult;
     this.contactDamage = c.contactDamage;
     this.speed = c.speed * mods.speedMult;
@@ -181,6 +192,7 @@ export class Enemy {
     this.kind = "miniboss";
     this.mods = mods;
     this.xpValue = XP.miniboss;
+    this.scoreValue = SCORE.miniboss;
     this.hp =
       MINIBOSS.hp * mods.hpMult * (1 + appearance * MINIBOSS.hpPerAppearance);
     this.contactDamage = MINIBOSS.contactDamage;

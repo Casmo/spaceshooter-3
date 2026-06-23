@@ -3,34 +3,94 @@ import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
 import { makeButton } from "../ui/Button";
+import { type RunStats, type RunRecord } from "../game/Stats";
+import { GameScene } from "./GameScene";
 import { MenuScene } from "./MenuScene";
 
-/** Game-over stub. Returns to the menu. Later issues add run stats here. */
+/** Game-over screen: this run's stats vs. persisted bests, and what to do next. */
 export class GameOverScene implements Scene {
   readonly view = new Container();
   private readonly starfield = new Starfield();
 
-  constructor(private readonly manager: SceneManager) {
+  constructor(
+    private readonly manager: SceneManager,
+    run: RunStats,
+    record: RunRecord,
+  ) {
     this.view.addChild(this.starfield.view);
 
-    const label = new Text({
+    const title = new Text({
       text: "GAME OVER",
       style: {
         fill: 0xff5555,
-        fontSize: 80,
+        fontSize: 88,
         fontWeight: "bold",
         fontFamily: "Arial",
       },
     });
-    label.anchor.set(0.5);
-    label.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 - 80);
-    this.view.addChild(label);
+    title.anchor.set(0.5);
+    title.position.set(VIRTUAL_WIDTH / 2, 200);
+    this.view.addChild(title);
 
-    const back = makeButton("Back to menu", () =>
+    this.addStats(run, record);
+
+    const again = makeButton("Play Again", () =>
+      this.manager.changeScene(new GameScene(this.manager)),
+    );
+    again.position.set(VIRTUAL_WIDTH / 2 - 180, VIRTUAL_HEIGHT - 160);
+    this.view.addChild(again);
+
+    const menu = makeButton("Main Menu", () =>
       this.manager.changeScene(new MenuScene(this.manager)),
     );
-    back.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 40);
-    this.view.addChild(back);
+    menu.position.set(VIRTUAL_WIDTH / 2 + 180, VIRTUAL_HEIGHT - 160);
+    this.view.addChild(menu);
+  }
+
+  private addStats(run: RunStats, record: RunRecord): void {
+    const { stats, newBestScore, newBestWave } = record;
+    const rows: [string, string, boolean][] = [
+      ["Score", run.score.toLocaleString(), newBestScore],
+      ["Wave", `${run.wave}`, newBestWave],
+      ["Level", `${run.level}`, false],
+      ["Kills", `${run.kills}`, false],
+      ["Bullets fired", `${run.bulletsFired}`, false],
+      ["Time survived", formatTime(run.timeSurvived), false],
+    ];
+
+    const startY = 320;
+    const lineH = 58;
+    rows.forEach(([k, v, isBest], i) => {
+      const y = startY + i * lineH;
+      const key = new Text({
+        text: k,
+        style: { fill: 0xaab2c2, fontSize: 34, fontFamily: "Arial" },
+      });
+      key.anchor.set(1, 0.5);
+      key.position.set(VIRTUAL_WIDTH / 2 - 30, y);
+
+      const val = new Text({
+        text: isBest ? `${v}   ★ NEW BEST` : v,
+        style: {
+          fill: isBest ? 0xffd24a : 0xffffff,
+          fontSize: 34,
+          fontWeight: "bold",
+          fontFamily: "Arial",
+        },
+      });
+      val.anchor.set(0, 0.5);
+      val.position.set(VIRTUAL_WIDTH / 2 + 30, y);
+
+      this.view.addChild(key, val);
+    });
+
+    const bests = new Text({
+      text: `Best score ${stats.bestScore.toLocaleString()}   ·   Best wave ${stats.bestWave}   ·   Runs ${stats.runsPlayed}`,
+      style: { fill: 0x8f97a8, fontSize: 26, fontFamily: "Arial" },
+    });
+    bests.anchor.set(0.5);
+    bests.position.set(VIRTUAL_WIDTH / 2, startY + rows.length * lineH + 30);
+    this.view.addChild(bests);
   }
 
   update(dt: number): void {
@@ -40,4 +100,10 @@ export class GameOverScene implements Scene {
   destroy(): void {
     this.view.destroy({ children: true });
   }
+}
+
+function formatTime(seconds: number): string {
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
 }
