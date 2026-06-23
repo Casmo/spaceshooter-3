@@ -2,10 +2,12 @@ import { Container, Text } from "pixi.js";
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
+import { playMusic, stopMusic } from "../game/audio";
 import { makeButton } from "../ui/Button";
 import { GameScene } from "./GameScene";
+import { CreditsScene } from "./CreditsScene";
 
-/** Main menu stub. Start navigates into the game. */
+/** Main menu: Start, Credits, Exit. Plays the menu music while shown. */
 export class MenuScene implements Scene {
   readonly view = new Container();
   private readonly starfield = new Starfield();
@@ -23,14 +25,24 @@ export class MenuScene implements Scene {
       },
     });
     title.anchor.set(0.5);
-    title.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 - 120);
+    title.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 - 180);
     this.view.addChild(title);
 
-    const start = makeButton("Start", () =>
-      this.manager.changeScene(new GameScene(this.manager)),
-    );
-    start.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 60);
-    this.view.addChild(start);
+    const items: [string, () => void][] = [
+      ["Start", () => this.manager.changeScene(new GameScene(this.manager))],
+      [
+        "Credits",
+        () => this.manager.changeScene(new CreditsScene(this.manager)),
+      ],
+      ["Exit", () => window.close()],
+    ];
+    items.forEach(([label, onClick], i) => {
+      const btn = makeButton(label, onClick);
+      btn.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 - 20 + i * 90);
+      this.view.addChild(btn);
+    });
+
+    playMusic();
   }
 
   update(dt: number): void {
@@ -38,6 +50,7 @@ export class MenuScene implements Scene {
   }
 
   destroy(): void {
+    stopMusic();
     this.view.destroy({ children: true });
   }
 }

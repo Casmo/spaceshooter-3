@@ -11,6 +11,7 @@ import { getTexture } from "../assets";
 import { ProjectilePool } from "./ProjectilePool";
 import { createModifiers, type WeaponModifiers } from "./WeaponModifiers";
 import { resolveBulletVisual } from "./weaponVisual";
+import { playSound } from "./audio";
 
 /**
  * The player ship. Eased-follows the cursor (smoothed, capped by a max speed so
@@ -83,6 +84,7 @@ export class Player {
    */
   takeHit(damage: number): void {
     if (this.invulnTimer > 0 || this.gameOver) return;
+    playSound("hit");
     this.hp -= damage;
     if (this.hp > 0) {
       this.invulnTimer = PLAYER.iframesHit;
@@ -135,6 +137,7 @@ export class Player {
     if (!firing || this.fireTimer > 0) return;
     this.fireTimer = this.cooldown;
     this.fireVolley();
+    playSound("shoot", 0.3);
   }
 
   /** Fire one volley, applying every active modifier. */
