@@ -1,20 +1,26 @@
 name: Release
 
 env:
-  itchio_project: casmo/spaceshooter-3
-  itchio_channel: windows
-
+  ITCH_USERNAME: casmo
+  ITCH_GAME_ID: 4705273
 on:
   push:
     branches:
       - main
     tags:
       - v*
-
 jobs:
-  exports:
-    name: Build, Release, and Upload
+  deploy:
+    name: Upload to Itch
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        channel:
+          - windows
+          - webgl
+    runs-on: ubuntu-latest
+    name: Deploy - Itch.io ${{ matrix.template }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
@@ -29,8 +35,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      - name: Zip build
-        run: cd dist && zip -r ../build.zip .
+      # - name: Zip build
+      #   run: cd dist && zip -r ../build.zip .
       - name: Set Version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -39,10 +45,15 @@ jobs:
             echo "version=${GITHUB_SHA::7}" >> $GITHUB_ENV
           fi
       - name: Upload ${{ matrix.preset }} to itch.io project
-        uses: robpc/itchio-upload-action@v1
+      - uses: actions/download-artifact@v2.0.8
         with:
-          path: build.zip
-          project: ${{ env.itchio_project }}
-          channel: ${{ env.itchio_channel }}
-          version: ${{ env.version }}
-          api-key: ${{ secrets.ITCHIO_API_KEY }}
+          name: ${{ matrix.channel }}
+          path: build/${{ matrix.channel }}
+      - uses: KikimoraGames/itch-publish@v0.0.3
+        with:
+          butlerApiKey: ${{secrets.ITCHIO_API_KEY}}
+          gameData: ./dist
+          itchUsername: ${{env.ITCH_USERNAME}}
+          itchGameId: ${{ env.ITCH_GAME_ID }}
+          buildChannel: ${{ matrix.channel }}
+          buildNumber: ${{ env.version }}
