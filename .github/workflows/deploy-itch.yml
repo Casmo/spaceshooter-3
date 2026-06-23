@@ -11,7 +11,7 @@ env:
   ITCH_USERNAME: casmo
   ITCH_GAME_ID: 4705273
 
-runs:
+jobs:
   deploy:
     name: Deploy - Itch.io ${{ matrix.template }}
     runs-on: ubuntu-latest
@@ -35,8 +35,6 @@ runs:
         run: npm ci
       - name: Build
         run: npm run build
-      # - name: Zip build
-      #   run: cd dist && zip -r ../build.zip .
       - name: Set Version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -45,10 +43,6 @@ runs:
             echo "version=${GITHUB_SHA::7}" >> $GITHUB_ENV
           fi
       - name: Upload ${{ matrix.preset }} to itch.io project
-      - uses: actions/download-artifact@v2.0.8
-        with:
-          name: ${{ matrix.channel }}
-          path: build/${{ matrix.channel }}
       - uses: KikimoraGames/itch-publish@v0.0.3
         with:
           butlerApiKey: ${{secrets.ITCHIO_API_KEY}}
