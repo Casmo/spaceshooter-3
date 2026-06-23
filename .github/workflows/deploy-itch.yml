@@ -19,7 +19,6 @@ jobs:
         channel:
           - windows
           - webgl
-    runs-on: ubuntu-latest
     name: Deploy - Itch.io ${{ matrix.template }}
     steps:
       - name: Check out repository
