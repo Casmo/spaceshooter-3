@@ -21,10 +21,13 @@ import { EffectsPool } from "../game/EffectsPool";
 import { Leveling } from "../game/Leveling";
 import { Upgrades, UPGRADE_DEFS, type UpgradeDef } from "../game/upgrades";
 import { emptyRun, loadStats, recordRun, type RunStats } from "../game/Stats";
+import { playSound } from "../game/audio";
 import { UpgradePrompt } from "../ui/UpgradePrompt";
+import { PauseOverlay } from "../ui/PauseOverlay";
 import { Hud } from "../ui/Hud";
 import { damageTierColor } from "../game/colors";
 import { GameOverScene } from "./GameOverScene";
+import { MenuScene } from "./MenuScene";
 
 /**
  * Gameplay scene. Owns the playfield (player, pools, waves), the XP/upgrade
@@ -57,6 +60,10 @@ export class GameScene implements Scene {
   private pendingLevelUps = 0;
   private prompt?: UpgradePrompt;
 
+  /** Player-initiated pause (Esc / P). */
+  private paused = false;
+  private pauseOverlay?: PauseOverlay;
+
   private readonly enemyCtx: EnemyContext = {
     playerX: 0,
     playerY: 0,
@@ -83,6 +90,12 @@ export class GameScene implements Scene {
   };
   private readonly onPointerUp = (e: FederatedPointerEvent) => {
     if (e.button === 0) this.firing = false;
+  };
+  private readonly onKeyDown = (e: KeyboardEvent) => {
+    if (e.code === "Escape" || e.code === "KeyP") {
+      e.preventDefault();
+      this.togglePause();
+    }
   };
 
   constructor(private readonly manager: SceneManager) {
@@ -139,6 +152,29 @@ export class GameScene implements Scene {
     stage.on("pointerdown", this.onPointerDown);
     stage.on("pointerup", this.onPointerUp);
     stage.on("pointerupoutside", this.onPointerUp);
+    window.addEventListener("keydown", this.onKeyDown);
+  }
+
+  /** Toggle the pause overlay (ignored while the level-up prompt is open). */
+  private togglePause(): void {
+    if (this.prompt) return;
+    if (this.paused) {
+      this.resume();
+      return;
+    }
+    this.paused = true;
+    this.pauseOverlay = new PauseOverlay({
+      onResume: () => this.resume(),
+      onRestart: () => this.manager.changeScene(new GameScene(this.manager)),
+      onQuit: () => this.manager.changeScene(new MenuScene(this.manager)),
+    });
+    this.view.addChild(this.pauseOverlay.view);
+  }
+
+  private resume(): void {
+    this.pauseOverlay?.view.destroy({ children: true });
+    this.pauseOverlay = undefined;
+    this.paused = false;
   }
 
   private aimAt(e: FederatedPointerEvent): void {
@@ -148,8 +184,8 @@ export class GameScene implements Scene {
   }
 
   update(dt: number): void {
-    // While the level-up prompt is open the whole game is paused.
-    if (this.prompt) return;
+    // The level-up prompt and the pause overlay both freeze the whole game.
+    if (this.prompt || this.paused) return;
 
     this.run.timeSurvived += dt;
 
@@ -198,6 +234,7 @@ export class GameScene implements Scene {
     this.run.wave = this.waves.currentWave;
     this.run.level = this.leveling.level;
     this.run.bulletsFired = this.player.bulletsFired;
+    playSound("gameover");
     const record = recordRun(this.run);
     this.manager.changeScene(new GameOverScene(this.manager, this.run, record));
   }
@@ -261,6 +298,7 @@ export class GameScene implements Scene {
     damage: number,
     exclude: Enemy,
   ): void {
+    playSound("explosion", 0.5);
     this.effects.spawn(
       "fire",
       x,
@@ -413,6 +451,7 @@ export class GameScene implements Scene {
 
   /** Open the level-up prompt for the next pending level-up (pauses the game). */
   private showPrompt(): void {
+    playSound("levelup");
     const choices = this.upgrades.draw(3);
     this.prompt = new UpgradePrompt(choices, (def) => this.applyPick(def));
     this.view.addChild(this.prompt.view);
@@ -447,6 +486,7 @@ export class GameScene implements Scene {
     stage.off("pointerdown", this.onPointerDown);
     stage.off("pointerup", this.onPointerUp);
     stage.off("pointerupoutside", this.onPointerUp);
+    window.removeEventListener("keydown", this.onKeyDown);
     stage.hitArea = null;
     this.view.destroy({ children: true });
   }

@@ -1,5 +1,6 @@
 import { Application } from "pixi.js";
 import { loadAssets } from "./assets";
+import { initAudio } from "./game/audio";
 import { SceneManager } from "./core/SceneManager";
 import { MenuScene } from "./scenes/MenuScene";
 
@@ -14,6 +15,7 @@ import { MenuScene } from "./scenes/MenuScene";
   document.getElementById("pixi-container")!.appendChild(app.canvas);
 
   await loadAssets();
+  await initAudio();
 
   const manager = new SceneManager(app);
   manager.changeScene(new MenuScene(manager));
