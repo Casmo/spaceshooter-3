@@ -9,7 +9,7 @@ on:
 
 env:
   ITCH_USERNAME: casmo
-  ITCH_GAME_ID: 4705273
+  ITCH_GAME_ID: spaceshooter-3
 
 jobs:
   deploy:
@@ -20,7 +20,6 @@ jobs:
       matrix:
         channel:
           - windows
-          - webgl
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
