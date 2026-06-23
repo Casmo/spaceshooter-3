@@ -34,6 +34,8 @@ export class Player {
   pickupRange: number = PLAYER.basePickupRange;
   /** Bullet-modifier levels; mutated by the upgrade system, read when firing. */
   readonly modifiers: WeaponModifiers = createModifiers();
+  /** Total projectiles fired by the weapon this run (for run stats). */
+  bulletsFired = 0;
 
   /** True once all lives are spent; the scene should end the run. */
   private gameOver = false;
@@ -170,6 +172,8 @@ export class Player {
     const originX = this.sprite.x;
     const originY = this.sprite.y - this.halfHeight;
     const speed = WEAPON.bulletSpeed;
+
+    this.bulletsFired += count;
 
     for (let i = 0; i < count; i++) {
       // theta is the offset from straight-up (-y); 0 when a single shot.

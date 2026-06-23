@@ -229,6 +229,18 @@ export const XP = {
   growth: 1.18,
 } as const;
 
+/** Score awarded per kill (by enemy type) plus the wave-clear bonus. */
+export const SCORE = {
+  swarmer: 10,
+  gunner: 30,
+  asteroidLarge: 25,
+  asteroidMedium: 12,
+  asteroidSmall: 5,
+  miniboss: 250,
+  /** Wave-clear bonus = waveClearBase * wave number. */
+  waveClearBase: 25,
+} as const;
+
 /** Star pickup: the only collectible in v1 (XP only). */
 export const STAR = {
   scale: 0.5,
