@@ -44,7 +44,12 @@ export class GameScene implements Scene {
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
   private readonly waves: WaveManager;
-  private readonly leveling = new Leveling(XP.baseThreshold, XP.growth);
+  private readonly leveling = new Leveling(
+    XP.baseThreshold,
+    XP.growth,
+    XP.lateLevel,
+    XP.lateGrowth,
+  );
   private readonly upgrades = new Upgrades(UPGRADE_DEFS);
   private readonly hud = new Hud();
   private readonly banner: Text;

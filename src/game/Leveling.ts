@@ -10,8 +10,10 @@ export class Leveling {
   threshold: number;
 
   constructor(
-    private readonly base: number,
+    base: number,
     private readonly growth: number,
+    private readonly lateLevel: number,
+    private readonly lateGrowth: number,
   ) {
     this.threshold = base;
   }
@@ -23,7 +25,9 @@ export class Leveling {
     while (this.xp >= this.threshold) {
       this.xp -= this.threshold;
       this.level += 1;
-      this.threshold = this.base * Math.pow(this.growth, this.level);
+      // Early levels grow gently; past lateLevel they grow faster.
+      const g = this.level < this.lateLevel ? this.growth : this.lateGrowth;
+      this.threshold *= g;
       ups += 1;
     }
     return ups;

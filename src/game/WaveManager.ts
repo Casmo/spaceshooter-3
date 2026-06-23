@@ -60,9 +60,16 @@ export class WaveManager {
   private beginWave(): void {
     this.waveNumber++;
     const n = this.waveNumber;
+    const earlyWaves = Math.min(n - 1, WAVES.hpRampWave - 1);
+    const lateWaves = Math.max(0, n - WAVES.hpRampWave);
     this.mods = {
-      hpMult: 1 + (n - 1) * WAVES.hpMultPerWave,
-      speedMult: 1 + (n - 1) * WAVES.speedMultPerWave,
+      hpMult:
+        1 +
+        earlyWaves * WAVES.hpMultPerWave +
+        lateWaves * WAVES.hpMultPerWaveLate,
+      speedMult:
+        1 +
+        Math.floor((n - 1) / WAVES.speedStepEveryWaves) * WAVES.speedStepAmount,
       splitBonus: Math.floor((n - 1) / WAVES.splitBonusEveryWaves),
     };
     this.spawnInterval = Math.max(
