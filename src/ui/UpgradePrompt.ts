@@ -12,6 +12,8 @@ const RARITY_LABEL: Record<Rarity, string> = {
   uncommon: "UNCOMMON",
   rare: "RARE",
   veryRare: "VERY RARE",
+  epic: "EPIC",
+  legendary: "LEGENDARY",
 };
 
 const CARD_W = 380;

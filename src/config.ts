@@ -50,8 +50,9 @@ export const PLAYER = {
 
 /** Base weapon (the single gun; modifiers come in a later issue). */
 export const WEAPON = {
-  /** Seconds between shots. Fire Rate upgrade reduces this later. */
-  cooldown: 0.16,
+  /** Seconds between shots. Deliberately slow at the start; Fire Rate upgrades
+   *  bring it down over a run. */
+  cooldown: 0.3,
   /** Bullet travel speed upward, virtual px/second. */
   bulletSpeed: 1400,
   /** Display scale applied to bullet.png. */
@@ -68,8 +69,8 @@ export const SWARMER = {
   hp: 24,
   /** HP removed from the player on contact. */
   contactDamage: 20,
-  /** Downward travel speed, virtual px/second. */
-  speed: 260,
+  /** Downward travel speed, virtual px/second (ramps via WAVES speed steps). */
+  speed: 135,
   /** Horizontal sine sway amplitude (virtual px) and frequency (Hz-ish). */
   swayAmplitude: 130,
   swayFrequency: 1.4,
@@ -82,7 +83,7 @@ export const GUNNER = {
   scale: 0.8,
   hp: 70,
   contactDamage: 25,
-  speed: 120,
+  speed: 72,
   bulletDamage: 12,
   shootInterval: 1.6,
   radiusFactor: 0.7,
@@ -109,7 +110,7 @@ export const ASTEROID: Record<
     tex: "asteroidLarge",
     hp: 90,
     contactDamage: 30,
-    speed: 130,
+    speed: 78,
     scale: 0.9,
     spin: 0.5,
     splitInto: "medium",
@@ -120,7 +121,7 @@ export const ASTEROID: Record<
     tex: "asteroidMedium",
     hp: 45,
     contactDamage: 22,
-    speed: 175,
+    speed: 104,
     scale: 0.9,
     spin: 0.8,
     splitInto: "small",
@@ -131,7 +132,7 @@ export const ASTEROID: Record<
     tex: "asteroidSmall",
     hp: 20,
     contactDamage: 15,
-    speed: 220,
+    speed: 138,
     scale: 0.9,
     spin: 1.2,
     splitInto: null,
@@ -188,9 +189,13 @@ export const WAVES = {
   /** Enemy count in wave 1, and growth per wave. */
   baseBudget: 6,
   budgetPerWave: 2,
-  /** Stat scaling per wave. */
+  /** HP scaling per wave up to hpRampWave, then hpMultPerWaveLate after it. */
   hpMultPerWave: 0.08,
-  speedMultPerWave: 0.03,
+  hpRampWave: 8,
+  hpMultPerWaveLate: 0.16,
+  /** Enemy speed ramps in steps: +speedStepAmount every speedStepEveryWaves. */
+  speedStepEveryWaves: 3,
+  speedStepAmount: 0.08,
   /** +1 asteroid split every N waves (capped). */
   splitBonusEveryWaves: 4,
   maxAsteroidSplit: 4,
@@ -212,21 +217,26 @@ export const PROJECTILES = {
 } as const;
 
 /** XP awarded per kill (by enemy type) and the level-up threshold curve.
- *  NOTE: the curve constants are placeholders — issue #10 tunes them toward
- *  ~30 level-ups for an average run / ~50 for a great run. */
+ *  Tuned (#10) toward ~30 level-ups for an average run (~wave 9) and ~50 for a
+ *  great run (~wave 19). Iterating from playtest feedback. */
 export const XP = {
-  swarmer: 1,
-  gunner: 3,
+  swarmer: 2,
+  gunner: 4,
   asteroidLarge: 4,
   asteroidMedium: 2,
   asteroidSmall: 1,
-  miniboss: 25,
+  miniboss: 30,
   /** XP granted by collecting a Star. */
-  star: 10,
-  /** First level-up needs this much XP. */
-  baseThreshold: 5,
-  /** Each level multiplies the threshold by this (geometric growth). */
-  growth: 1.18,
+  star: 12,
+  /** First level-up needs this much XP (front-loaded so the first few come
+   *  fast — first hits ~mid-wave-2). */
+  baseThreshold: 20,
+  /** Threshold growth for the early levels (1..lateLevel). */
+  growth: 1.1,
+  /** From this level on, thresholds grow faster so the late-game enemy-count
+   *  XP flood doesn't keep over-leveling the player. */
+  lateLevel: 10,
+  lateGrowth: 1.16,
 } as const;
 
 /** Score awarded per kill (by enemy type) plus the wave-clear bonus. */
@@ -256,13 +266,21 @@ export const STAR = {
   blinkBefore: 1.5,
 } as const;
 
-/** Upgrade rarity tiers and their card colors. */
-export type Rarity = "common" | "uncommon" | "rare" | "veryRare";
+/** Upgrade rarity tiers and their card colors (low -> high). */
+export type Rarity =
+  | "common"
+  | "uncommon"
+  | "rare"
+  | "veryRare"
+  | "epic"
+  | "legendary";
 export const RARITY_COLORS: Record<Rarity, number> = {
   common: 0x9aa0a6, // gray
   uncommon: 0x57d957, // green
   rare: 0xff9933, // orange
   veryRare: 0xb066ff, // purple
+  epic: 0xff5fd0, // magenta
+  legendary: 0xffd24a, // gold
 };
 
 /** The non-modifier upgrade pool (bullet modifiers are added in #6).
@@ -298,10 +316,11 @@ export const MODIFIERS = {
 /** The 7 bullet modifiers as upgrade cards (all uncommon/green, cap 10).
  *  Multishot/Spread/Pierce ship in #6a; the rest are wired in #6b. */
 export const MODIFIER_UPGRADES = {
-  multishot: { cap: 10, weight: 8, rarity: "uncommon" },
+  // Multishot and Homing are very strong, so they're rare top-tier drops.
+  multishot: { cap: 10, weight: 1, rarity: "legendary" },
   spread: { cap: 10, weight: 8, rarity: "uncommon" },
   pierce: { cap: 10, weight: 8, rarity: "uncommon" },
-  homing: { cap: 10, weight: 8, rarity: "uncommon" },
+  homing: { cap: 10, weight: 3, rarity: "epic" },
   explosive: { cap: 10, weight: 8, rarity: "uncommon" },
   burn: { cap: 10, weight: 8, rarity: "uncommon" },
   bounce: { cap: 10, weight: 8, rarity: "uncommon" },
