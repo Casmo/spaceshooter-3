@@ -3,6 +3,7 @@ name: Release
 env:
   ITCH_USERNAME: casmo
   ITCH_GAME_ID: 4705273
+
 on:
   push:
     branches:
