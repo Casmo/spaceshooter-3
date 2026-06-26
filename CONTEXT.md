@@ -86,3 +86,9 @@ A non-shooting hazard that drifts down dealing contact damage and, when destroye
 **Star**:
 The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. Rendered as a spinning coin. (`Credits-Sheet`)
 _Avoid_: gem, orb, XP drop.
+
+### Effects
+
+**Hit Spark**:
+A small, untinted, decorative burst played at every player-bullet→enemy contact — including pierce, multishot, and Bounce-bullet hits, and whether or not the hit kills. Purely cosmetic; deals no damage and carries no Modifier meaning. Fixed native size, plays once. Distinct from the Explosive Modifier's larger damaging burst, which stacks on top of it on Explosive hits. (`Explosion01-Sheet`)
+_Avoid_: explosion, blast (reserve those for the Explosive Modifier's burst).

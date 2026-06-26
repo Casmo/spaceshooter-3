@@ -278,6 +278,7 @@ export class GameScene implements Scene {
 
   /** Apply one bullet→enemy hit: direct damage, burn, and explosion. */
   private applyBulletHit(bullet: Projectile, enemy: Enemy): void {
+    this.effects.spark(bullet.x, bullet.y);
     if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
     if (bullet.burnDps > 0)
       enemy.applyBurn(bullet.burnDps, bullet.burnDuration);

@@ -26,6 +26,8 @@ const MANIFEST = {
     "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
   explosion:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion02-Sheet.png",
+  explosionSmall:
+    "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion01-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
   // Parallax background layers (nebula = slow/far, stars = faster/near).
   nebula: "./assets/SpaceShooter/Backgrounds/BG_Nebula.png",
@@ -50,7 +52,7 @@ export type AssetAlias =
   | "explosion";
 
 /** Aliases backed by an animation sheet (resolved via getFrames()). */
-export type FrameAlias = "ship" | "star" | "explosion";
+export type FrameAlias = "ship" | "star" | "explosion" | "explosionSmall";
 
 const textures = new Map<AssetAlias, Texture>();
 const frameSets = new Map<FrameAlias, Texture[]>();
@@ -107,6 +109,12 @@ export async function loadAssets(): Promise<void> {
   const explosionFrames = sliceFrames(Assets.get("explosion"), 64, 10);
   frameSets.set("explosion", explosionFrames);
   textures.set("smoke", explosionFrames[6]);
+
+  // Hit Spark burst: small 5-frame (32x32) flash played on every bullet hit.
+  frameSets.set(
+    "explosionSmall",
+    sliceFrames(Assets.get("explosionSmall"), 32, 5),
+  );
 
   // Asteroids: one 12-frame sheet (64x64); pick three distinct sizes.
   const asteroidFrames = sliceFrames(Assets.get("asteroids"), 64, 12);

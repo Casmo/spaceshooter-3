@@ -1,5 +1,10 @@
 import { AnimatedSprite, Container, Sprite } from "pixi.js";
-import { getTexture, getFrames, type AssetAlias } from "../assets";
+import {
+  getTexture,
+  getFrames,
+  type AssetAlias,
+  type FrameAlias,
+} from "../assets";
 
 /** A short-lived visual: a sprite that fades out (and optionally grows). */
 class Effect {
@@ -34,7 +39,8 @@ export class EffectsPool {
   readonly view = new Container();
   private readonly all: Effect[] = [];
   private readonly live: Effect[] = [];
-  private readonly explosions: AnimatedSprite[] = [];
+  /** One recycled AnimatedSprite pool per burst sheet (keyed by frame alias). */
+  private readonly bursts = new Map<FrameAlias, AnimatedSprite[]>();
 
   private obtain(): Effect {
     const found = this.all.find((e) => !e.active);
@@ -70,10 +76,15 @@ export class EffectsPool {
     this.live.push(e);
   }
 
-  private obtainExplosion(): AnimatedSprite {
-    const found = this.explosions.find((a) => !a.visible);
+  private obtainBurst(alias: FrameAlias): AnimatedSprite {
+    let pool = this.bursts.get(alias);
+    if (!pool) {
+      pool = [];
+      this.bursts.set(alias, pool);
+    }
+    const found = pool.find((a) => !a.visible);
     if (found) return found;
-    const a = new AnimatedSprite(getFrames("explosion"));
+    const a = new AnimatedSprite(getFrames(alias));
     a.anchor.set(0.5);
     a.loop = false;
     a.animationSpeed = 0.4;
@@ -81,18 +92,31 @@ export class EffectsPool {
     a.onComplete = () => {
       a.visible = false;
     };
-    this.explosions.push(a);
+    pool.push(a);
     this.view.addChild(a);
     return a;
   }
 
   /** Play a one-shot explosion burst centred at (x, y), sized by `scale`. */
   explode(x: number, y: number, scale: number, tint = 0xffffff): void {
-    const a = this.obtainExplosion();
+    const a = this.obtainBurst("explosion");
     a.visible = true;
     a.tint = tint;
     a.position.set(x, y);
     a.scale.set(scale);
+    a.gotoAndPlay(0);
+  }
+
+  /**
+   * Hit Spark: a small, untinted, decorative burst played at every player
+   * bullet→enemy contact (see docs/DESIGN.md). Purely cosmetic — no damage.
+   */
+  spark(x: number, y: number): void {
+    const a = this.obtainBurst("explosionSmall");
+    a.visible = true;
+    a.tint = 0xffffff;
+    a.position.set(x, y);
+    a.scale.set(1);
     a.gotoAndPlay(0);
   }
 
