@@ -1,31 +1,47 @@
-import { Container, TilingSprite } from "pixi.js";
+import { Container, Graphics, TilingSprite } from "pixi.js";
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, STARFIELD } from "../config";
-import { getTexture } from "../assets";
+import { getTexture, type AssetAlias } from "../assets";
+
+interface Layer {
+  sprite: TilingSprite;
+  speed: number;
+}
 
 /**
- * Scrolling space background: one tiling layer (the pixel-art pack has no
- * separate star layers) scrolling top->bottom for a sense of forward motion.
- * The 500px-wide source is scaled to cover the full width (no horizontal
- * repeat), so the field is fully covered with art from the first frame; it
- * then drifts downward.
+ * Parallax space background. A solid black base fills the field from the first
+ * frame; over it, two transparent layers (a far nebula and a nearer star layer,
+ * split out of the Space_xx sheets) tile to fill and scroll top->bottom at
+ * different speeds to give depth and forward motion.
  */
 export class Starfield {
   readonly view = new Container();
-  private readonly bg: TilingSprite;
+  private readonly layers: Layer[] = [];
 
   constructor() {
-    const texture = getTexture("bg");
-    this.bg = new TilingSprite({
-      texture,
-      width: VIRTUAL_WIDTH,
-      height: VIRTUAL_HEIGHT,
-    });
-    // Cover the full screen width with one column of the texture (no repeat).
-    this.bg.tileScale.set(VIRTUAL_WIDTH / texture.width);
-    this.view.addChild(this.bg);
+    const black = new Graphics()
+      .rect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+      .fill(0x000000);
+    this.view.addChild(black);
+
+    const defs: { tex: AssetAlias; speed: number }[] = [
+      { tex: "nebula", speed: STARFIELD.nebulaSpeed },
+      { tex: "starsA", speed: STARFIELD.starsASpeed },
+    ];
+
+    for (const def of defs) {
+      const sprite = new TilingSprite({
+        texture: getTexture(def.tex),
+        width: VIRTUAL_WIDTH,
+        height: VIRTUAL_HEIGHT,
+      });
+      this.view.addChild(sprite);
+      this.layers.push({ sprite, speed: def.speed });
+    }
   }
 
   update(dt: number): void {
-    this.bg.tilePosition.y += STARFIELD.scrollSpeed * dt;
+    for (const layer of this.layers) {
+      layer.sprite.tilePosition.y += layer.speed * dt;
+    }
   }
 }

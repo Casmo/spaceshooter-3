@@ -10,8 +10,8 @@ import { Assets, Rectangle, Texture } from "pixi.js";
  * nearest-neighbour to stay crisp. Several assets ship as horizontal sprite
  * sheets; loadAssets() slices those into per-frame Textures.
  *
- * Folder names with spaces are URL-encoded (%20) so the dev server / fetch
- * resolve them.
+ * The background is a 2-layer parallax built from BG_Nebula and BG_Stars1
+ * (halves split out of the Space_xx sheets — see the Backgrounds folder).
  */
 
 /** Base files loaded by the Assets system (sheets included, sliced below). */
@@ -27,7 +27,9 @@ const MANIFEST = {
   explosion:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion02-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
-  bg: "./assets/SpaceShooter/Backgrounds/Space_01-Sheet.png",
+  // Parallax background layers (nebula = slow/far, stars = faster/near).
+  nebula: "./assets/SpaceShooter/Backgrounds/BG_Nebula.png",
+  starsA: "./assets/SpaceShooter/Backgrounds/BG_Stars1.png",
 } as const;
 
 /** Every texture alias gameplay code can resolve via getTexture(). */
@@ -43,7 +45,8 @@ export type AssetAlias =
   | "enemyBullet"
   | "star"
   | "smoke"
-  | "bg"
+  | "nebula"
+  | "starsA"
   | "explosion";
 
 /** Aliases backed by an animation sheet (resolved via getFrames()). */
@@ -88,7 +91,8 @@ export async function loadAssets(): Promise<void> {
   textures.set("miniboss", Assets.get("miniboss"));
   textures.set("bullet", Assets.get("bullet"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
-  textures.set("bg", Assets.get("bg"));
+  textures.set("nebula", Assets.get("nebula"));
+  textures.set("starsA", Assets.get("starsA"));
 
   // Player ship: 5 banking frames (48x48). The HUD life-icon uses the centre.
   const shipFrames = sliceFrames(Assets.get("ship"), 48, 5);

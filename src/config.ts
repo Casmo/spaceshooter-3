@@ -8,10 +8,12 @@
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
 
-/** Single scrolling space background (the pixel-art pack has no separate star
- *  layers, so the old 3-layer parallax collapses to one). Virtual px/second. */
+/** Parallax background scroll speeds (virtual px/second, top -> bottom). The
+ *  layers are split out of the Space_xx sheets: a slow far nebula and a faster
+ *  star layer, all over a solid black base. */
 export const STARFIELD = {
-  scrollSpeed: 40,
+  nebulaSpeed: 12,
+  starsASpeed: 40,
 } as const;
 
 /** Player ship movement, placement, and survival. */
