@@ -301,8 +301,8 @@ export class GameScene implements Scene {
     exclude: Enemy,
   ): void {
     playSound("explosion", 0.5);
-    // Animated burst sized to the AoE (64px explosion frame -> diameter 2r).
-    this.effects.explode(x, y, radius / 32, MODIFIER_FX.tint.explosion);
+    // Animated burst, sized from the AoE radius then scaled down to 0.2x.
+    this.effects.explode(x, y, (radius / 32) * 0.2, MODIFIER_FX.tint.explosion);
     const r2 = radius * radius;
     for (const enemy of this.enemies.activeEnemies) {
       if (!enemy.active || enemy === exclude) continue;

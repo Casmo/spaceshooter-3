@@ -16,8 +16,8 @@ export const STARFIELD = {
 
 /** Player ship movement, placement, and survival. */
 export const PLAYER = {
-  /** Display scale. Native size (1.0) — the pixel-art ship is not upscaled. */
-  scale: 1,
+  /** Display scale. 2x native size (bullets stay at native size). */
+  scale: 2,
   /** Spawn position (virtual coords). */
   startX: VIRTUAL_WIDTH / 2,
   startY: VIRTUAL_HEIGHT * 0.8,
@@ -61,7 +61,7 @@ export const WEAPON = {
 
 /** Swarmer enemy (insect-1): fast, low HP, contact-only. */
 export const SWARMER = {
-  scale: 1,
+  scale: 2,
   hp: 24,
   /** HP removed from the player on contact. */
   contactDamage: 20,
@@ -76,7 +76,7 @@ export const SWARMER = {
 
 /** Gunner enemy (insect-2): tougher, slower, fires aimed shots at the player. */
 export const GUNNER = {
-  scale: 1,
+  scale: 2,
   hp: 70,
   contactDamage: 25,
   speed: 72,
@@ -107,7 +107,7 @@ export const ASTEROID: Record<
     hp: 90,
     contactDamage: 30,
     speed: 78,
-    scale: 1,
+    scale: 2,
     spin: 0.5,
     splitInto: "medium",
     splitCount: 2,
@@ -118,7 +118,7 @@ export const ASTEROID: Record<
     hp: 45,
     contactDamage: 22,
     speed: 104,
-    scale: 1,
+    scale: 2,
     spin: 0.8,
     splitInto: "small",
     splitCount: 2,
@@ -129,7 +129,7 @@ export const ASTEROID: Record<
     hp: 20,
     contactDamage: 15,
     speed: 138,
-    scale: 1,
+    scale: 2,
     spin: 1.2,
     splitInto: null,
     splitCount: 0,
@@ -139,7 +139,7 @@ export const ASTEROID: Record<
 
 /** Mini-boss: scaled-up Gunner, wave-5 capstone, fires a fan at the player. */
 export const MINIBOSS = {
-  scale: 1,
+  scale: 2,
   hp: 900,
   /** HP scaling per mini-boss appearance (gets tougher each time). */
   hpPerAppearance: 0.5,

@@ -13,7 +13,6 @@ import { Assets, Rectangle, Texture } from "pixi.js";
  * Folder names with spaces are URL-encoded (%20) so the dev server / fetch
  * resolve them.
  */
-const PROJECTILES_DIR = "./assets/SpaceShooter/Projectiles%20And%20Explosions";
 
 /** Base files loaded by the Assets system (sheets included, sliced below). */
 const MANIFEST = {
@@ -22,9 +21,11 @@ const MANIFEST = {
   gunner: "./assets/SpaceShooter/Enemies/Gunship.png",
   miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
   asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
-  bullet: `${PROJECTILES_DIR}/Projectile04.png`,
-  enemyBullet: `${PROJECTILES_DIR}/Projectile03.png`,
-  explosion: `${PROJECTILES_DIR}/Explosion02-Sheet.png`,
+  bullet: "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile04.png",
+  enemyBullet:
+    "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
+  explosion:
+    "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion02-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
   bg: "./assets/SpaceShooter/Backgrounds/Space_01-Sheet.png",
 } as const;
