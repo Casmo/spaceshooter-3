@@ -159,7 +159,8 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
   {
     id: "bounce",
     name: "Bounce",
-    description: "Each hit sprays a shard in a random direction",
+    description:
+      "Each hit spawns a full-powered bullet in a random direction; chains deeper per level",
     rarity: MODIFIER_UPGRADES.bounce.rarity,
     cap: MODIFIER_UPGRADES.bounce.cap,
     weight: MODIFIER_UPGRADES.bounce.weight,

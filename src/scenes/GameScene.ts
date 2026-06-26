@@ -247,10 +247,12 @@ export class GameScene implements Scene {
   /**
    * Player bullets damage enemies. A bullet passes through up to its
    * `pierceRemaining` enemies (never hitting the same one twice) before it is
-   * consumed. On each hit it also applies Burn, and queues Explosive blasts and
-   * Bounce fragments (resolved after the loop to avoid mutating mid-iteration).
+   * consumed. On each hit it also applies Burn and Explosive, and (if it has
+   * Bounce left) queues a Bounce-bullet — spawned after the loop so the new
+   * clones aren't collision-tested at their source this frame.
    */
   private resolveBulletHits(): void {
+    const bounceSpawns: { bullet: Projectile; source: Enemy }[] = [];
     for (const bullet of this.bullets.activeProjectiles) {
       if (!bullet.active) continue;
       for (const enemy of this.enemies.activeEnemies) {
@@ -259,6 +261,8 @@ export class GameScene implements Scene {
 
         bullet.hits.add(enemy);
         this.applyBulletHit(bullet, enemy);
+        if (bullet.bounceRemaining > 0)
+          bounceSpawns.push({ bullet, source: enemy });
 
         if (bullet.pierceRemaining > 0) {
           bullet.pierceRemaining -= 1;
@@ -268,9 +272,11 @@ export class GameScene implements Scene {
         }
       }
     }
+    for (const { bullet, source } of bounceSpawns)
+      this.spawnBounce(bullet, source);
   }
 
-  /** Apply one bullet→enemy hit: direct damage, burn, explosion, fragments. */
+  /** Apply one bullet→enemy hit: direct damage, burn, and explosion. */
   private applyBulletHit(bullet: Projectile, enemy: Enemy): void {
     if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
     if (bullet.burnDps > 0)
@@ -281,15 +287,6 @@ export class GameScene implements Scene {
         bullet.y,
         bullet.explosiveRadius,
         bullet.explosiveDamage,
-        enemy,
-      );
-    }
-    if (bullet.fragmentCount > 0) {
-      this.spawnFragments(
-        bullet.x,
-        bullet.y,
-        bullet.fragmentCount,
-        bullet.fragmentDamage,
         enemy,
       );
     }
@@ -324,29 +321,33 @@ export class GameScene implements Scene {
     }
   }
 
-  /** Bounce: spray short-lived shards in random directions (non-recursive). */
-  private spawnFragments(
-    x: number,
-    y: number,
-    count: number,
-    damage: number,
-    source: Enemy,
-  ): void {
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      this.bullets.spawn({
-        x,
-        y,
-        vx: Math.cos(angle) * MODIFIER_FX.bounce.speed,
-        vy: Math.sin(angle) * MODIFIER_FX.bounce.speed,
-        damage,
-        tint: MODIFIER_FX.tint.fragment,
-        texture: getTexture("bullet"),
-        scale: MODIFIER_FX.bounce.scale,
-        life: MODIFIER_FX.bounce.life,
-        hitsExclude: source, // never re-hit the enemy that spawned it
-      });
-    }
+  /**
+   * Bounce (ADR-0005): spawn one full clone of `parent` in a random direction.
+   * The clone keeps full damage, unlimited range, the same look, and every other
+   * Modifier — but never pierces, and chains one generation shallower. It cannot
+   * hit the enemy it spawned from (Homing acquisition skips it too).
+   */
+  private spawnBounce(parent: Projectile, source: Enemy): void {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = WEAPON.bulletSpeed;
+    this.bullets.spawn({
+      x: parent.x,
+      y: parent.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      damage: parent.damage,
+      tint: parent.sprite.tint,
+      texture: parent.sprite.texture,
+      scale: parent.sprite.scale.x,
+      // No `life`: unlimited range, like a normal bullet.
+      homing: parent.homing,
+      explosiveRadius: parent.explosiveRadius,
+      explosiveDamage: parent.explosiveDamage,
+      burnDps: parent.burnDps,
+      burnDuration: parent.burnDuration,
+      bounceRemaining: parent.bounceRemaining - 1,
+      hitsExclude: source, // never re-hit the enemy that spawned it
+    });
   }
 
   /**
@@ -359,7 +360,9 @@ export class GameScene implements Scene {
     for (const bullet of this.bullets.activeProjectiles) {
       if (!bullet.active || bullet.homing <= 0) continue;
       if (!bullet.acquired) {
-        const acquired = this.nearestEnemy(bullet.x, bullet.y);
+        // Skip already-excluded enemies (a Bounce-bullet's source) so it never
+        // Locks back onto the enemy it spawned from.
+        const acquired = this.nearestEnemy(bullet.x, bullet.y, bullet.hits);
         bullet.target = acquired;
         bullet.targetGen = acquired ? acquired.generation : 0;
         bullet.acquired = true;
@@ -383,11 +386,15 @@ export class GameScene implements Scene {
     }
   }
 
-  private nearestEnemy(x: number, y: number): Enemy | undefined {
+  private nearestEnemy(
+    x: number,
+    y: number,
+    exclude?: ReadonlySet<unknown>,
+  ): Enemy | undefined {
     let best: Enemy | undefined;
     let bestD = Infinity;
     for (const enemy of this.enemies.activeEnemies) {
-      if (!enemy.active) continue;
+      if (!enemy.active || exclude?.has(enemy)) continue;
       const dx = enemy.x - x;
       const dy = enemy.y - y;
       const d = dx * dx + dy * dy;

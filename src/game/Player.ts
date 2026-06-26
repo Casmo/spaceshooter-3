@@ -164,8 +164,8 @@ export class Player {
         : 0;
     const explosiveDamage = this.damage * MODIFIER_FX.explosive.damageFactor;
     const burnDps = m.burn * MODIFIER_FX.burn.dpsPerLevel;
-    const fragmentCount = m.bounce;
-    const fragmentDamage = this.damage * MODIFIER_FX.bounce.damageFactor;
+    // Bounce level is the generations a shot can chain (see ADR-0005).
+    const bounceRemaining = m.bounce;
 
     // Arc widens with Spread; even without it, multiple shots get a small gap.
     const spreadArc = m.spread * MODIFIERS.spreadDegPerLevel;
@@ -195,8 +195,7 @@ export class Player {
         explosiveDamage,
         burnDps,
         burnDuration: MODIFIER_FX.burn.duration,
-        fragmentCount,
-        fragmentDamage,
+        bounceRemaining,
       });
     }
   }

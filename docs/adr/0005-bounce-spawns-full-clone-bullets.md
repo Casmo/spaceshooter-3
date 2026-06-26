@@ -1,0 +1,11 @@
+# Bounce spawns full clone bullets that chain, instead of a Fragment spray
+
+The Bounce modifier no longer sprays short-range, half-damage Fragments. On every enemy a bullet hits, it now spawns one **Bounce-bullet**: a full clone of the parent — full damage, unlimited range, the same visual, and every other active Modifier (Homing, Explosive, Burn) inherited — fired in a random direction, with Pierce stripped. The Bounce level is a **generational depth**: the parent passes `level − 1` to its Bounce-bullet, each generation chains one fewer time, and bullets at depth 0 still hit but stop spawning.
+
+We kept the hit that spawns a Bounce-bullet *separate* from Pierce so the two upgrades stay distinct and stackable: a piercing bullet keeps flying through enemies and throws off a Bounce-bullet at each one. We considered the simpler "single chain" model — the bullet itself ricochets N times and dies — but that makes Pierce and Bounce mutually exclusive (a ricocheting bullet that also pierces never terminates a segment), so we rejected it. The cost is that high Pierce × high Bounce branches into a lot of bullets fast; that is the accepted price of keeping both live, and the reason Bounce is gated hard (see below).
+
+Direction is **random**, deliberately, not retargeted toward the nearest enemy — Bounce is meant to read as a chaotic scatter, distinct from Homing's deliberate Lock. When the player *also* has Homing, the Bounce-bullet still homes (it is a true clone), so the random heading only matters for builds without Homing. A Bounce-bullet cannot hit the enemy it spawned from, and Homing's Lock acquisition skips that same enemy; if it is the only enemy present, the Bounce-bullet flies straight rather than curving back into it.
+
+Because a Bounce-bullet multiplies *every* other Modifier the player owns and chains generationally, it is the strongest thing in the game. We moved it from uncommon/weight 8 to **Legendary, weight 1** (as rare as Multishot) and dropped its cap from 10 to **3** to bound both the rarity and the on-screen bullet explosion. These are the numbers to revisit first if Bounce feels too weak or too dominant.
+
+Supersedes the Fragment design from the v1 spec (`docs/DESIGN.md` §4) and the old `MODIFIER_FX.bounce` fragment parameters.

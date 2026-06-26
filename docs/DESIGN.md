@@ -33,7 +33,7 @@ Seven orthogonal, stacking **Modifiers** (cap 10 each):
 | Homing | bullets curve toward nearest enemy |
 | Explosive | small AoE on impact (`fire.png`) |
 | Burn | damage-over-time on hit |
-| Bounce | on any hit (incl. pierce hits) spawn **1 Fragment per level** in a random direction; **non-recursive**, **50% damage**, **short range**; cannot hit the enemy just struck |
+| Bounce | on any hit (incl. pierce hits) spawn **1 Bounce-bullet** in a random direction: a **full clone** of the parent — full damage, unlimited range, all other Modifiers inherited — but **pierce stripped**. Level = **generational depth** (parent passes `level−1` down); chains until depth 0. Cannot hit the enemy just struck (Homing also skips it). Legendary, cap 3. See ADR-0005. |
 
 **Projectile visuals (player):** styled by modifiers, NOT by damage. Base sprite chosen by priority — `Explosive/Homing → rocket` › `Pierce → laser-1/2/3` › `Burn → fire` › `Multishot/Spread → plasm` › none → `bullet`. Per-modifier trail/tint effects layer on top (Burn=orange flame, Homing=cyan, Explosive=red, Pierce=blue). Rocket is the headline look when several are active *(known tradeoff: rocket-look + pierce can mislead; revisit later)*.
 
@@ -45,7 +45,10 @@ Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pa
 | Damage | ∞ | common (gray) | number up |
 | Move Speed | 10 | common (gray) | follow responsiveness/max speed |
 | Fire Rate | ∞ | common (gray) | **diminishing**: `cooldown *= ~0.99`/lvl, asymptotic, never 0 |
-| Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce | 10 | uncommon (green) | the 7 modifiers |
+| Spread, Pierce, Explosive, Burn | 10 | uncommon (green) | 4 of the 7 modifiers |
+| Homing | 10 | epic (blue) | curve toward locked enemy |
+| Multishot | 10 | legendary (gold) | +1 projectile per level |
+| Bounce | 3 | legendary (gold) | spawns full clone bullets that chain (ADR-0005) |
 | HP | ∞ | rare (orange) | max HP up |
 | Extra Life | ∞ | very rare (purple) | +1 life |
 

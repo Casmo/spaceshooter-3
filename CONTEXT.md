@@ -42,9 +42,13 @@ _Avoid_: level screen.
 A bullet Upgrade that changes how the single weapon fires or what its projectiles do. The seven: Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce. Modifiers stack orthogonally — their effects combine rather than replace.
 _Avoid_: weapon, gun (there is only one weapon).
 
-**Fragment**:
-The short-range secondary projectile spawned by the Bounce modifier on any hit. Flies in a random direction, deals 50% of the parent bullet's damage, hits once, and never spawns more Fragments.
-_Avoid_: ricochet, bounce-bullet, shrapnel (in code; "fragmentation" is fine in prose).
+**Bounce**:
+The Modifier that, on every enemy a bullet hits, spawns one Bounce-bullet. The Bounce level is a generational depth, not a count: each Bounce-bullet spawns one of its own a generation shallower, and so on until the depth runs out. A higher level only makes the chain go deeper — it never spawns more than one Bounce-bullet per hit.
+_Avoid_: ricochet, scatter, fragmentation, shrapnel.
+
+**Bounce-bullet**:
+A full clone of its parent bullet spawned by the Bounce modifier on an enemy hit. Identical to the parent — full damage, unlimited range, same look, and every other Modifier inherited — except it flies in a random direction and never pierces. It cannot hit the enemy it spawned from (Homing also skips that enemy when acquiring a Lock; if that enemy is the only one present, the Bounce-bullet flies straight). Bounce-bullets that still have depth left spawn their own when they hit.
+_Avoid_: Fragment, shard, ricochet, shrapnel.
 
 **Homing**:
 The Modifier that makes a bullet curve toward a single enemy it locks onto. The lock is acquired once, when the bullet is born, on the closest enemy present at that instant; it never switches to another enemy afterwards. A higher Homing level only turns the bullet faster — it does not change what or when it locks.

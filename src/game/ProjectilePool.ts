@@ -25,10 +25,9 @@ export interface SpawnOptions {
   /** Burn damage-over-time applied on hit. */
   burnDps?: number;
   burnDuration?: number;
-  /** Bounce: fragments spawned per hit, and their damage. */
-  fragmentCount?: number;
-  fragmentDamage?: number;
-  /** A target to pre-exclude from this shot's hits (e.g. a fragment's source). */
+  /** Bounce: generations of Bounce-bullets this shot can still spawn. */
+  bounceRemaining?: number;
+  /** A target to pre-exclude from this shot's hits (e.g. a Bounce-bullet's source). */
   hitsExclude?: unknown;
 }
 
@@ -56,8 +55,8 @@ export class Projectile {
   explosiveDamage = 0;
   burnDps = 0;
   burnDuration = 0;
-  fragmentCount = 0;
-  fragmentDamage = 0;
+  /** Bounce generations remaining: each hit spawns a Bounce-bullet at this minus one. */
+  bounceRemaining = 0;
   /** Targets already hit, so a piercing shot never double-hits the same one. */
   readonly hits = new Set<unknown>();
 
@@ -153,8 +152,7 @@ export class ProjectilePool {
     p.explosiveDamage = o.explosiveDamage ?? 0;
     p.burnDps = o.burnDps ?? 0;
     p.burnDuration = o.burnDuration ?? 0;
-    p.fragmentCount = o.fragmentCount ?? 0;
-    p.fragmentDamage = o.fragmentDamage ?? 0;
+    p.bounceRemaining = o.bounceRemaining ?? 0;
 
     p.hits.clear();
     if (o.hitsExclude !== undefined) p.hits.add(o.hitsExclude);

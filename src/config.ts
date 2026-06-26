@@ -323,7 +323,9 @@ export const MODIFIER_UPGRADES = {
   homing: { cap: 10, weight: 3, rarity: "epic" },
   explosive: { cap: 10, weight: 8, rarity: "uncommon" },
   burn: { cap: 10, weight: 8, rarity: "uncommon" },
-  bounce: { cap: 10, weight: 8, rarity: "uncommon" },
+  // Bounce spawns full clone bullets that chain (ADR-0005) — the strongest
+  // modifier, so it's a rare, hard-capped legendary drop.
+  bounce: { cap: 3, weight: 1, rarity: "legendary" },
 } as const;
 
 /** Effect parameters for the #6b modifiers (Homing/Explosive/Burn/Bounce). */
@@ -334,8 +336,6 @@ export const MODIFIER_FX = {
   explosive: { baseRadius: 70, radiusPerLevel: 16, damageFactor: 0.6 },
   /** Burn damage-over-time. dps scales per level; duration is fixed. */
   burn: { dpsPerLevel: 7, duration: 2 },
-  /** Bounce fragments: 1 per level, 50% damage, short-lived, non-recursive. */
-  bounce: { damageFactor: 0.5, life: 0.35, speed: 760, scale: 0.32 },
   /** Trail puffs dropped by Homing (cyan) / Burn (orange) bullets. */
   trail: { interval: 0.03, life: 0.25, scale: 0.5 },
   /** Explosion flash visual. */
@@ -348,6 +348,5 @@ export const MODIFIER_FX = {
     homingTrail: 0x66ddff,
     burnTrail: 0xff8a3d,
     explosion: 0xff5533,
-    fragment: 0xcfd8ff,
   },
 } as const;
