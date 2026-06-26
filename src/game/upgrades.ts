@@ -40,7 +40,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     cap: UPGRADES.moveSpeed.cap,
     weight: UPGRADES.moveSpeed.weight,
     apply: (p) => {
-      p.maxSpeed += UPGRADES.moveSpeed.speedAmount;
+      p.sensitivity += UPGRADES.moveSpeed.sensitivityAmount;
       p.followResponse += UPGRADES.moveSpeed.responseAmount;
     },
   },

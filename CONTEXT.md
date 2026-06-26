@@ -4,6 +4,12 @@ A browser-based, vertical-scrolling roguelike shoot-'em-up built with PixiJS. Ea
 
 ## Language
 
+### Controls
+
+**Steering**:
+How the player moves the ship: by the mouse's *motion*, not its position. Moving the mouse nudges the ship a proportional distance and it eases to a stop when the hand stops — there is no on-screen point the ship "goes to." The mouse only ever moves the ship; the weapon always fires straight up. Improved by the Engine Upgrade.
+_Avoid_: aiming (there is no aim), cursor-follow, point-and-go.
+
 ### Run & progression
 
 **Run**:
@@ -31,8 +37,12 @@ The moment accumulated XP crosses the current threshold, triggering an Upgrade P
 ### Upgrades
 
 **Upgrade**:
-A persistent improvement chosen during a Run. One of 13 types across stats (Damage, HP, Move Speed, Fire Rate, Extra Life, Pickup Range) and the 7 bullet Modifiers. Each type has its own level cap, rarity weight, and per-level effect.
+A persistent improvement chosen during a Run. One of 13 types across stats (Damage, HP, Engine, Fire Rate, Extra Life, Pickup Range) and the 7 bullet Modifiers. Each type has its own level cap, rarity weight, and per-level effect.
 _Avoid_: powerup (reserve "powerup" for casual talk only), perk.
+
+**Engine**:
+The stat Upgrade that improves Steering: each level raises sensitivity (the ship travels farther per unit of hand motion — the player's sense of "ship speed") and makes the ship's chase of its target snappier.
+_Avoid_: Move Speed (the ship has no speed stat — the mouse sets the pace), thrusters.
 
 **Upgrade Prompt**:
 The paused, 3-card choice shown on Level-up. Cards are a weighted-random draw of distinct, not-yet-maxed Upgrade types.

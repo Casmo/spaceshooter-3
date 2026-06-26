@@ -45,6 +45,13 @@ export class SceneManager {
     });
   }
 
+  /** Current letterbox scale (CSS px per virtual px). Used to normalize raw
+   *  mouse-movement deltas into virtual space so steering feels window-size
+   *  independent (see docs/adr/0006). */
+  get scale(): number {
+    return this.root.scale.x;
+  }
+
   /** Recompute scale + offset to fit the virtual resolution in the window. */
   private resize(): void {
     const { width, height } = this.app.screen;

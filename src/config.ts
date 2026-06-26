@@ -23,11 +23,16 @@ export const PLAYER = {
   /** Spawn position (virtual coords). */
   startX: VIRTUAL_WIDTH / 2,
   startY: VIRTUAL_HEIGHT * 0.8,
-  /** Eased-follow smoothing toward the cursor, per second (higher = snappier).
-   *  The Move Speed upgrade will raise this in a later issue. */
+  /** Mouse sensitivity: how far the steer-target moves per unit of mouse motion.
+   *  Deltas are normalized by the letterbox scale first, so this is window-size
+   *  independent; 1.0 means the ship tracks the hand 1:1 on screen. The Engine
+   *  upgrade raises it (see docs/adr/0006). */
+  sensitivity: 0.8,
+  /** Eased-follow smoothing toward the steer-target, per second (higher =
+   *  snappier). The Engine upgrade raises it. */
   followResponse: 12,
-  /** Hard cap on how fast the ship can travel, virtual px/second. The ship
-   *  "chases" a far cursor at this speed; the Move Speed upgrade raises it. */
+  /** Teleport-guard: caps a single frame's step so a violent mouse flick can't
+   *  warp the ship across the field. Fixed — not raised by the Engine upgrade. */
   maxSpeed: 1600,
   /** Starting max HP for a fresh run. HP upgrade raises this later. */
   maxHp: 100,
@@ -289,7 +294,7 @@ export const UPGRADES = {
     cap: 10,
     weight: 10,
     rarity: "common",
-    speedAmount: 120,
+    sensitivityAmount: 0.1,
     responseAmount: 1,
   },
   fireRate: { cap: 0, weight: 10, rarity: "common", mult: 0.95 },

@@ -1,6 +1,5 @@
 import { Container, Text, type FederatedPointerEvent } from "pixi.js";
 import {
-  PLAYER,
   WEAPON,
   ENEMY_BULLET,
   STAR,
@@ -83,23 +82,36 @@ export class GameScene implements Scene {
       }),
   };
 
-  // Input state, in virtual coordinates.
-  private targetX = PLAYER.startX;
-  private targetY = PLAYER.startY;
+  // Input state. Steering is relative (ADR-0006): raw mouse-movement deltas
+  // accumulate here (CSS px) and are applied each frame.
+  private pendingDx = 0;
+  private pendingDy = 0;
   private firing = false;
+  /** True only while we release the pointer lock ourselves (opening the upgrade
+   *  prompt), so the lock-change handler doesn't read it as a loss → pause. */
+  private expectedUnlock = false;
 
-  private readonly onPointerMove = (e: FederatedPointerEvent) => this.aimAt(e);
+  private readonly onMouseMove = (e: MouseEvent) => {
+    if (!this.isLocked) return;
+    this.pendingDx += e.movementX;
+    this.pendingDy += e.movementY;
+  };
   private readonly onPointerDown = (e: FederatedPointerEvent) => {
-    this.aimAt(e);
     if (e.button === 0) this.firing = true;
   };
   private readonly onPointerUp = (e: FederatedPointerEvent) => {
     if (e.button === 0) this.firing = false;
   };
-  private readonly onKeyDown = (e: KeyboardEvent) => {
-    if (e.code === "Escape" || e.code === "KeyP") {
-      e.preventDefault();
-      this.togglePause();
+  /** Single source of truth for entering/leaving active gameplay: losing the
+   *  lock (Esc, alt-tab, OS steal) pauses; (re)acquiring it resumes. */
+  private readonly onPointerLockChange = () => {
+    if (this.isLocked) {
+      this.expectedUnlock = false;
+      this.onLockAcquired();
+    } else if (this.expectedUnlock) {
+      this.expectedUnlock = false;
+    } else {
+      this.pauseFromLockLoss();
     }
   };
 
@@ -153,51 +165,83 @@ export class GameScene implements Scene {
     const stage = this.manager.app.stage;
     stage.eventMode = "static";
     stage.hitArea = this.manager.app.screen;
-    stage.on("pointermove", this.onPointerMove);
+    // Firing stays on Pixi pointer events (works under pointer lock); steering
+    // reads raw movement deltas from the DOM (Pixi's global coords freeze while
+    // locked, but movementX/Y keep flowing).
     stage.on("pointerdown", this.onPointerDown);
     stage.on("pointerup", this.onPointerUp);
     stage.on("pointerupoutside", this.onPointerUp);
-    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("mousemove", this.onMouseMove);
+    document.addEventListener("pointerlockchange", this.onPointerLockChange);
+    // Capture the cursor for relative steering. This runs inside the click that
+    // started/restarted the run, so it counts as the required user gesture.
+    this.requestLock();
   }
 
-  /** Toggle the pause overlay (ignored while the level-up prompt is open). */
-  private togglePause(): void {
-    if (this.prompt) return;
-    if (this.paused) {
-      this.resume();
-      return;
+  private get isLocked(): boolean {
+    return document.pointerLockElement === this.manager.app.canvas;
+  }
+
+  /**
+   * Request relative-mouse capture, preferring raw (un-accelerated) deltas and
+   * falling back to OS-accelerated where `unadjustedMovement` is unsupported
+   * (ADR-0006).
+   */
+  private requestLock(): void {
+    const el = this.manager.app.canvas as HTMLCanvasElement;
+    const request = el.requestPointerLock as (options?: {
+      unadjustedMovement?: boolean;
+    }) => Promise<void> | void;
+    const result = request.call(el, { unadjustedMovement: true });
+    if (result && typeof (result as Promise<void>).catch === "function") {
+      (result as Promise<void>).catch(() => el.requestPointerLock());
     }
+  }
+
+  /** Lock (re)acquired — back in active gameplay; clear stale input and any
+   *  pause overlay. */
+  private onLockAcquired(): void {
+    this.pendingDx = 0;
+    this.pendingDy = 0;
+    this.firing = false;
+    if (this.paused) {
+      this.pauseOverlay?.view.destroy({ children: true });
+      this.pauseOverlay = undefined;
+      this.paused = false;
+    }
+  }
+
+  /** Lock lost without us asking (Esc, alt-tab, OS steal) → pause. Resume
+   *  re-locks, which resumes gameplay via onLockAcquired. */
+  private pauseFromLockLoss(): void {
+    if (this.paused || this.prompt) return;
+    this.firing = false;
     this.paused = true;
     this.pauseOverlay = new PauseOverlay({
-      onResume: () => this.resume(),
+      onResume: () => this.requestLock(),
       onRestart: () => this.manager.changeScene(new GameScene(this.manager)),
       onQuit: () => this.manager.changeScene(new MenuScene(this.manager)),
     });
     this.view.addChild(this.pauseOverlay.view);
   }
 
-  private resume(): void {
-    this.pauseOverlay?.view.destroy({ children: true });
-    this.pauseOverlay = undefined;
-    this.paused = false;
-  }
-
-  private aimAt(e: FederatedPointerEvent): void {
-    const local = this.view.toLocal(e.global);
-    this.targetX = local.x;
-    this.targetY = local.y;
-  }
-
   update(dt: number): void {
-    // The level-up prompt and the pause overlay both freeze the whole game.
-    if (this.prompt || this.paused) return;
+    // The level-up prompt and pause overlay both freeze the game; so does not
+    // holding the lock (mid re-lock transition, or the lock was just lost).
+    if (this.prompt || this.paused || !this.isLocked) return;
 
     this.run.timeSurvived += dt;
 
     this.starfield.update(dt);
     this.waves.update(dt);
 
-    this.player.update(dt, this.targetX, this.targetY, this.firing);
+    // Convert accumulated mouse deltas (CSS px) to virtual px via the letterbox
+    // scale, then steer; drain the accumulator for the next frame.
+    const scale = this.manager.scale || 1;
+    this.player.steer(this.pendingDx / scale, this.pendingDy / scale);
+    this.pendingDx = 0;
+    this.pendingDy = 0;
+    this.player.update(dt, this.firing);
 
     this.enemyCtx.playerX = this.player.x;
     this.enemyCtx.playerY = this.player.y;
@@ -239,6 +283,8 @@ export class GameScene implements Scene {
     this.run.wave = this.waves.currentWave;
     this.run.level = this.leveling.level;
     this.run.bulletsFired = this.player.bulletsFired;
+    // Release the cursor so the game-over screen is clickable.
+    document.exitPointerLock();
     playSound("gameover");
     const record = recordRun(this.run);
     this.manager.changeScene(new GameOverScene(this.manager, this.run, record));
@@ -472,6 +518,13 @@ export class GameScene implements Scene {
   /** Open the level-up prompt for the next pending level-up (pauses the game). */
   private showPrompt(): void {
     playSound("levelup");
+    // Free the cursor so cards are clickable; flag it as an expected release so
+    // the lock-change handler doesn't stack a pause on top.
+    if (this.isLocked) {
+      this.expectedUnlock = true;
+      document.exitPointerLock();
+    }
+    this.firing = false;
     const choices = this.upgrades.draw(3);
     this.prompt = new UpgradePrompt(choices, (def) => this.applyPick(def));
     this.view.addChild(this.prompt.view);
@@ -482,7 +535,13 @@ export class GameScene implements Scene {
     this.prompt?.view.destroy({ children: true });
     this.prompt = undefined;
     this.pendingLevelUps -= 1;
-    if (this.pendingLevelUps > 0) this.showPrompt();
+    if (this.pendingLevelUps > 0) {
+      this.showPrompt();
+    } else {
+      // Re-capture the cursor (inside this card-click gesture); gameplay resumes
+      // once the lock engages, via onLockAcquired.
+      this.requestLock();
+    }
   }
 
   private updateOverlay(): void {
@@ -502,12 +561,16 @@ export class GameScene implements Scene {
 
   destroy(): void {
     const stage = this.manager.app.stage;
-    stage.off("pointermove", this.onPointerMove);
     stage.off("pointerdown", this.onPointerDown);
     stage.off("pointerup", this.onPointerUp);
     stage.off("pointerupoutside", this.onPointerUp);
-    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("mousemove", this.onMouseMove);
+    document.removeEventListener("pointerlockchange", this.onPointerLockChange);
     stage.hitArea = null;
+    // Note: we deliberately don't exitPointerLock here. A restart constructs the
+    // next GameScene (which re-requests the lock) before this runs; exiting here
+    // would cancel that. Non-gameplay exits release the lock explicitly (endRun,
+    // and the paused state is already unlocked for Quit).
     this.view.destroy({ children: true });
   }
 }

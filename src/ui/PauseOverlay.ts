@@ -45,7 +45,7 @@ export class PauseOverlay {
     });
 
     const hint = new Text({
-      text: "Press Esc or P to resume",
+      text: "Click Resume to recapture the mouse",
       style: { fill: 0x9aa0a6, fontSize: 26, fontFamily: "Arial" },
     });
     hint.anchor.set(0.5);

@@ -9,7 +9,7 @@ A vertical-scrolling roguelike shmup in PixiJS v8 + TypeScript + Vite. Glossary 
 - **Central tuning:** every tunable (caps, weights, curves, costs, lifetimes, percentages) lives in `config.ts`.
 
 ## 2. Controls
-- **Mouse only.** Ship eased-follows the cursor (lerp/acceleration toward a max speed), via pointer events. Not instant-snap — so Move Speed is meaningful.
+- **Mouse only, relative.** Under Pointer Lock, mouse *motion* shoves a free-floating target the ship eased-follows — not the cursor's position. Sensitivity is the Engine upgrade's headline effect. See docs/adr/0006 (supersedes the original cursor-follow scheme).
 - **Left mouse = fire**, hold-to-fire with a cooldown.
 - **Esc / P** = toggle pause (Resume / Restart / Quit-to-Menu overlay).
 
@@ -43,7 +43,7 @@ Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pa
 | Upgrade | Cap | Rarity (color) | Notes |
 |---|---|---|---|
 | Damage | ∞ | common (gray) | number up |
-| Move Speed | 10 | common (gray) | follow responsiveness/max speed |
+| Engine | 10 | common (gray) | mouse sensitivity + follow responsiveness |
 | Fire Rate | ∞ | common (gray) | **diminishing**: `cooldown *= ~0.99`/lvl, asymptotic, never 0 |
 | Spread, Pierce, Explosive, Burn | 10 | uncommon (green) | 4 of the 7 modifiers |
 | Homing | 10 | epic (blue) | curve toward locked enemy |
@@ -109,7 +109,7 @@ Per-upgrade `cap`, `weight`, and effect curve all configurable.
 
 ## Build order (suggested)
 1. Scaffold: virtual-resolution canvas + letterbox scaler, scene/state manager (Menu → Game → GameOver), central `config.ts`, asset loader, `star.png` copy.
-2. Player: eased mouse-follow, hold-to-fire base weapon, HP/lives/i-frames, small hitbox.
+2. Player: relative mouse steering (Pointer Lock), hold-to-fire base weapon, HP/lives/i-frames, small hitbox.
 3. Enemies + waves: Swarmer/Gunner/Asteroid (with splitting), wave budget + breather + banner, mini-boss every 5th. Object pooling.
 4. XP & upgrades: kill XP, Star pickup + magnet, Level-up prompt (3 weighted cards, rarity colors), the 13 upgrade types.
 5. Bullet modifiers: all 7, stacking, priority sprite + layered trails, projectile cap.

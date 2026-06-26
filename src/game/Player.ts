@@ -14,9 +14,11 @@ import { resolveBulletVisual } from "./weaponVisual";
 import { playSound } from "./audio";
 
 /**
- * The player ship. Eased-follows the cursor (smoothed, capped by a max speed so
- * it visibly "chases" a far cursor), fires the base weapon on a cooldown while
- * the trigger is held, and tracks HP / lives with invulnerability frames.
+ * The player ship. Steered by relative mouse motion (see docs/adr/0006): each
+ * mouse delta shoves a free-floating target point, and the ship eased-follows
+ * that point (smoothed, capped by a teleport-guard step). Fires the base weapon
+ * on a cooldown while the trigger is held, and tracks HP / lives with
+ * invulnerability frames.
  */
 export class Player {
   readonly sprite: Sprite;
@@ -30,9 +32,16 @@ export class Player {
   // Upgradable stats (mutated by the upgrade system).
   damage: number = WEAPON.damage;
   cooldown: number = WEAPON.cooldown;
-  maxSpeed: number = PLAYER.maxSpeed;
+  /** Steer-target travel per unit of mouse motion; raised by the Engine upgrade. */
+  sensitivity: number = PLAYER.sensitivity;
   followResponse: number = PLAYER.followResponse;
   pickupRange: number = PLAYER.basePickupRange;
+  /** Fixed teleport-guard cap on a single frame's step (not upgrade-scaled). */
+  private readonly maxSpeed: number = PLAYER.maxSpeed;
+
+  /** Free-floating point the mouse shoves around; the ship eased-follows it. */
+  private targetX: number = PLAYER.startX;
+  private targetY: number = PLAYER.startY;
   /** Bullet-modifier levels; mutated by the upgrade system, read when firing. */
   readonly modifiers: WeaponModifiers = createModifiers();
   /** Total projectiles fired by the weapon this run (for run stats). */
@@ -74,10 +83,28 @@ export class Player {
     return this.gameOver;
   }
 
-  update(dt: number, targetX: number, targetY: number, firing: boolean): void {
-    this.move(dt, targetX, targetY);
+  update(dt: number, firing: boolean): void {
+    this.move(dt);
     this.shoot(dt, firing);
     this.tickInvulnerability(dt);
+  }
+
+  /**
+   * Shove the steer-target by a mouse delta (already converted to virtual px),
+   * scaled by sensitivity and clamped to the play bounds. The ship then chases
+   * the target in `move`.
+   */
+  steer(dx: number, dy: number): void {
+    this.targetX = clamp(
+      this.targetX + dx * this.sensitivity,
+      this.halfWidth,
+      VIRTUAL_WIDTH - this.halfWidth,
+    );
+    this.targetY = clamp(
+      this.targetY + dy * this.sensitivity,
+      this.halfHeight,
+      VIRTUAL_HEIGHT - this.halfHeight,
+    );
   }
 
   /**
@@ -101,19 +128,22 @@ export class Player {
     }
     this.hp = this.maxHp;
     this.sprite.position.set(PLAYER.startX, PLAYER.startY);
+    // Reset the steer-target too, or the ship eases back toward where it died.
+    this.targetX = PLAYER.startX;
+    this.targetY = PLAYER.startY;
     this.invulnTimer = PLAYER.iframesRespawn;
   }
 
-  private move(dt: number, targetX: number, targetY: number): void {
-    const dx = targetX - this.sprite.x;
-    const dy = targetY - this.sprite.y;
+  private move(dt: number): void {
+    const dx = this.targetX - this.sprite.x;
+    const dy = this.targetY - this.sprite.y;
 
-    // Frame-rate independent exponential smoothing toward the cursor.
+    // Frame-rate independent exponential smoothing toward the steer-target.
     const ease = 1 - Math.exp(-this.followResponse * dt);
     let stepX = dx * ease;
     let stepY = dy * ease;
 
-    // Clamp the step to the max speed so a far cursor is chased, not teleported.
+    // Teleport-guard: cap the step so a violent flick can't warp the ship.
     const stepLen = Math.hypot(stepX, stepY);
     const maxStep = this.maxSpeed * dt;
     if (stepLen > maxStep && stepLen > 0) {
