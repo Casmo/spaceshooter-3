@@ -6,6 +6,7 @@ import {
   GUNNER,
   ASTEROID,
   MINIBOSS,
+  MINE,
   ENEMY_BULLET,
   WAVES,
   XP,
@@ -14,7 +15,7 @@ import {
 } from "../config";
 import { getTexture, type AssetAlias } from "../assets";
 
-export type EnemyKind = "swarmer" | "gunner" | "asteroid" | "miniboss";
+export type EnemyKind = "swarmer" | "gunner" | "asteroid" | "miniboss" | "mine";
 
 /** Per-frame context passed to enemies so they can shoot at the player. */
 export interface EnemyContext {
@@ -72,6 +73,12 @@ export class Enemy {
   splitInto: AsteroidSize | null = null;
   splitCount = 0;
 
+  // Mine aimed dash: velocity is locked on the first update() (the spawn frame)
+  // toward the player's position then; `aimed` guards that one-time lock.
+  private aimed = false;
+  private mineVx = 0;
+  private mineVy = 0;
+
   // Shooting (gunner / mini-boss).
   private canShoot = false;
   private shootInterval = 0;
@@ -117,6 +124,7 @@ export class Enemy {
     this.spin = 0;
     this.splitInto = null;
     this.splitCount = 0;
+    this.aimed = false;
     this.canShoot = false;
     this.shootTimer = 0;
     this.fanCount = 1;
@@ -216,6 +224,33 @@ export class Enemy {
     this.sprite.position.set(VIRTUAL_WIDTH / 2, -this.sprite.height / 2);
   }
 
+  /**
+   * Spawn a Mine at a pre-chosen off-screen point (x, y). Its aimed velocity is
+   * locked on the first update(), toward the player's position that frame. Speed
+   * ramps by wave to a hard cap and deliberately ignores the wave speedMult so
+   * the cap stays exact.
+   */
+  spawnMine(x: number, y: number, wave: number, mods: WaveMods): void {
+    this.reset("mine", MINE.scale);
+    this.kind = "mine";
+    this.mods = mods;
+    this.xpValue = XP.mine;
+    this.scoreValue = SCORE.mine;
+    this.hp = MINE.hp * mods.hpMult;
+    // Contact routes through detonation in the scene; this is parity only.
+    this.contactDamage = MINE.explosionDamage;
+    const steps = Math.floor(
+      (wave - MINE.startWave) / MINE.speedRampEveryWaves,
+    );
+    this.speed = Math.min(
+      MINE.maxSpeed,
+      MINE.baseSpeed + Math.max(0, steps) * MINE.speedRampAmount,
+    );
+    this.spin = (Math.random() < 0.5 ? -1 : 1) * MINE.spin;
+    this.radius = (this.sprite.width / 2) * MINE.radiusFactor;
+    this.sprite.position.set(x, y);
+  }
+
   /** Apply (or refresh) a burn DoT. Burns stack their dps and refresh duration. */
   applyBurn(dps: number, duration: number): void {
     this.burnDps += dps;
@@ -250,6 +285,19 @@ export class Enemy {
         break;
       case "miniboss":
         this.updateMiniBoss(dt);
+        break;
+      case "mine":
+        if (!this.aimed) {
+          const dx = ctx.playerX - this.sprite.x;
+          const dy = ctx.playerY - this.sprite.y;
+          const len = Math.hypot(dx, dy) || 1;
+          this.mineVx = (dx / len) * this.speed;
+          this.mineVy = (dy / len) * this.speed;
+          this.aimed = true;
+        }
+        this.sprite.x += this.mineVx * dt;
+        this.sprite.y += this.mineVy * dt;
+        this.sprite.rotation += this.spin * dt; // cosmetic; path is unaffected
         break;
     }
     if (this.canShoot) this.updateShooting(dt, ctx);
@@ -373,6 +421,27 @@ export class EnemyPool {
     this.live.push(e);
   }
 
+  /** Spawn a Mine just outside one of three edges (top / left / right, equal
+   *  odds); side spawns are confined to the upper part of the field. */
+  spawnMine(mods: WaveMods, wave: number): void {
+    const e = this.obtain();
+    // Spawn just off-screen — smaller than the despawn threshold (the sprite's
+    // own size) so a Mine isn't culled before it dashes inward on frame one.
+    const margin = 40;
+    const edge = Math.floor(Math.random() * 3);
+    let x: number;
+    let y: number;
+    if (edge === 0) {
+      x = this.randomTopX();
+      y = -margin;
+    } else {
+      y = Math.random() * VIRTUAL_HEIGHT * MINE.sideSpawnMaxYFactor;
+      x = edge === 1 ? -margin : VIRTUAL_WIDTH + margin;
+    }
+    e.spawnMine(x, y, wave, mods);
+    this.live.push(e);
+  }
+
   /** Handle an enemy destroyed by damage: split asteroids into children. */
   handleDeath(e: Enemy): void {
     if (!e.splitInto || e.splitCount <= 0) return;
@@ -400,7 +469,15 @@ export class EnemyPool {
         this.live.splice(i, 1);
         continue;
       }
-      if (e.sprite.y > VIRTUAL_HEIGHT + e.sprite.height) {
+      // Everyone despawns off the bottom; a Mine flies a free aimed line, so it
+      // can also exit the top or a side — escaping that way never detonates.
+      const offBottom = e.sprite.y > VIRTUAL_HEIGHT + e.sprite.height;
+      const offOther =
+        e.kind === "mine" &&
+        (e.sprite.y < -e.sprite.height ||
+          e.sprite.x < -e.sprite.width ||
+          e.sprite.x > VIRTUAL_WIDTH + e.sprite.width);
+      if (offBottom || offOther) {
         e.kill();
         this.live.splice(i, 1);
       }

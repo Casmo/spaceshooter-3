@@ -97,9 +97,16 @@ export class EffectsPool {
     return a;
   }
 
-  /** Play a one-shot explosion burst centred at (x, y), sized by `scale`. */
-  explode(x: number, y: number, scale: number, tint = 0xffffff): void {
-    const a = this.obtainBurst("explosion");
+  /** Play a one-shot explosion burst centred at (x, y), sized by `scale`. The
+   *  Mine's detonation passes its own larger burst sheet via `alias`. */
+  explode(
+    x: number,
+    y: number,
+    scale: number,
+    tint = 0xffffff,
+    alias: FrameAlias = "explosion",
+  ): void {
+    const a = this.obtainBurst(alias);
     a.visible = true;
     a.tint = tint;
     a.position.set(x, y);

@@ -163,6 +163,36 @@ export const MINIBOSS = {
   radiusFactor: 0.7,
 } as const;
 
+/** Mine: a flying explosive that enters from the top or a side, locks one aimed
+ *  course at the player at spawn, flies it straight, and detonates when destroyed
+ *  or on player contact (never when it escapes off-screen). Player-only AoE. */
+export const MINE = {
+  scale: 2,
+  hp: 30,
+  /** Flat AoE damage to the player on detonation (within explosionRadius). */
+  explosionDamage: 40,
+  /** Blast radius (virtual px). The detonation burst is scaled to match it
+   *  (radius / EXPLOSION04_HALF), so the art footprint stays equal to the hitbox. */
+  explosionRadius: 120,
+  /** Native half-height of an Explosion04 frame (480/2) — its full-scale radius. */
+  explosion04Half: 240,
+  /** Aimed-dash speed at the entry wave; ramps by wave, ignoring speedMult. */
+  baseSpeed: 150,
+  speedRampAmount: 50,
+  speedRampEveryWaves: 5,
+  /** Hard speed ceiling (virtual px/s) — reached ~wave 36. */
+  maxSpeed: 500,
+  /** First wave Mines appear (normal waves only — never mini-boss waves). */
+  startWave: 6,
+  /** Per-spawn share of normal-wave spawns from startWave on. */
+  spawnChance: 0.15,
+  /** Side spawns are confined to the top fraction of the field. */
+  sideSpawnMaxYFactor: 0.6,
+  /** Cosmetic tumble (rad/s, random direction) — never affects the flight path. */
+  spin: 0.8,
+  radiusFactor: 0.7,
+} as const;
+
 /** Enemy projectile (Projectile03 circle, tinted by damage tier). */
 export const ENEMY_BULLET = {
   scale: 1,
@@ -229,6 +259,7 @@ export const XP = {
   asteroidMedium: 2,
   asteroidSmall: 1,
   miniboss: 30,
+  mine: 4,
   /** XP granted by collecting a Star. */
   star: 12,
   /** First level-up needs this much XP (front-loaded so the first few come
@@ -250,6 +281,7 @@ export const SCORE = {
   asteroidMedium: 12,
   asteroidSmall: 5,
   miniboss: 250,
+  mine: 25,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,
 } as const;
