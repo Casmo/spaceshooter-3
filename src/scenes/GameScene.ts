@@ -349,12 +349,26 @@ export class GameScene implements Scene {
     }
   }
 
-  /** Steer Homing bullets toward the nearest enemy, preserving their speed. */
+  /**
+   * Steer Homing bullets toward the one enemy they Locked at birth, preserving
+   * their speed. A bullet acquires its Lock once, on its first steer frame, on
+   * the closest enemy then present; it never re-locks. Once that enemy is gone
+   * (destroyed or fled the field), the bullet keeps its last-known heading.
+   */
   private steerHoming(dt: number): void {
     for (const bullet of this.bullets.activeProjectiles) {
       if (!bullet.active || bullet.homing <= 0) continue;
-      const target = this.nearestEnemy(bullet.x, bullet.y);
-      if (!target) continue;
+      if (!bullet.acquired) {
+        const acquired = this.nearestEnemy(bullet.x, bullet.y);
+        bullet.target = acquired;
+        bullet.targetGen = acquired ? acquired.generation : 0;
+        bullet.acquired = true;
+      }
+      const target = bullet.target as Enemy | undefined;
+      // Lock is valid only while the same enemy is still alive in its slot.
+      if (!target || !target.active || target.generation !== bullet.targetGen) {
+        continue;
+      }
       const desired = Math.atan2(target.y - bullet.y, target.x - bullet.x);
       const current = Math.atan2(bullet.vy, bullet.vx);
       let diff = desired - current;

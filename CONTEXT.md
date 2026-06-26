@@ -46,6 +46,14 @@ _Avoid_: weapon, gun (there is only one weapon).
 The short-range secondary projectile spawned by the Bounce modifier on any hit. Flies in a random direction, deals 50% of the parent bullet's damage, hits once, and never spawns more Fragments.
 _Avoid_: ricochet, bounce-bullet, shrapnel (in code; "fragmentation" is fine in prose).
 
+**Homing**:
+The Modifier that makes a bullet curve toward a single enemy it locks onto. The lock is acquired once, when the bullet is born, on the closest enemy present at that instant; it never switches to another enemy afterwards. A higher Homing level only turns the bullet faster — it does not change what or when it locks.
+_Avoid_: tracking, seeking, guided.
+
+**Lock** (Target Lock):
+The bond between a Homing bullet and the one enemy it steers toward. A Lock lasts until that enemy is gone — destroyed or fled off the bottom of the field. The bullet does not re-lock; once its Locked enemy is gone it simply keeps flying in its current direction.
+_Avoid_: aim, target (as a verb), retarget.
+
 **Rarity**:
 The weight class governing how often an Upgrade type appears in the draw, shown by card color: **gray** = common, **green** = uncommon, **orange** = rare, **purple** = very rare.
 

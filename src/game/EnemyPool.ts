@@ -37,6 +37,11 @@ const NO_MODS: WaveMods = { hpMult: 1, speedMult: 1, splitBonus: 0 };
 export class Enemy {
   readonly sprite: Sprite;
   active = false;
+  /**
+   * Monotonic id, bumped on every spawn. Lets a Homing bullet tell "my target
+   * is gone" from "my target's pooled slot was reused for a new enemy".
+   */
+  generation = 0;
   kind: EnemyKind = "swarmer";
   hp = 0;
   contactDamage = 0;
@@ -97,6 +102,7 @@ export class Enemy {
   /** Reset all behavior flags to a clean baseline before configuring a kind. */
   private reset(tex: AssetAlias, scale: number): void {
     this.active = true;
+    this.generation++;
     this.sprite.visible = true;
     this.sprite.texture = getTexture(tex);
     this.sprite.scale.set(scale);

@@ -46,6 +46,12 @@ export class Projectile {
   life = 0;
   // Modifier effects carried by this shot (0 = inactive).
   homing = 0;
+  /** Homing lock state. Acquired once on the first steer frame, never re-acquired. */
+  acquired = false;
+  /** The locked enemy this shot steers toward, or undefined if none/gone. */
+  target: unknown;
+  /** The target's generation at lock time; guards against pooled-slot reuse. */
+  targetGen = 0;
   explosiveRadius = 0;
   explosiveDamage = 0;
   burnDps = 0;
@@ -140,6 +146,9 @@ export class ProjectilePool {
     p.pierceRemaining = o.pierce ?? 0;
     p.life = o.life ?? 0;
     p.homing = o.homing ?? 0;
+    p.acquired = false;
+    p.target = undefined;
+    p.targetGen = 0;
     p.explosiveRadius = o.explosiveRadius ?? 0;
     p.explosiveDamage = o.explosiveDamage ?? 0;
     p.burnDps = o.burnDps ?? 0;
