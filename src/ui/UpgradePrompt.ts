@@ -11,7 +11,6 @@ const RARITY_LABEL: Record<Rarity, string> = {
   common: "COMMON",
   uncommon: "UNCOMMON",
   rare: "RARE",
-  veryRare: "VERY RARE",
   epic: "EPIC",
   legendary: "LEGENDARY",
 };

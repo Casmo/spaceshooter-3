@@ -10,8 +10,8 @@ const LINES: [string, number][] = [
   ["", 20],
   ["Created by Mathieu", 40],
   ["", 14],
-  ["Art by Vadim — anim86", 36],
-  ["anim86.itch.io · anim86.com", 28],
+  ["Art by Lil Cthulhu", 36],
+  ["lil-cthulhu.itch.io", 28],
   ["", 14],
   ["Built with PixiJS", 32],
 ];

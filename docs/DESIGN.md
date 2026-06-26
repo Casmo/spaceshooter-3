@@ -46,11 +46,11 @@ Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pa
 | Engine | 10 | common (gray) | mouse sensitivity + follow responsiveness |
 | Fire Rate | ∞ | common (gray) | **diminishing**: `cooldown *= ~0.99`/lvl, asymptotic, never 0 |
 | Spread, Pierce, Explosive, Burn | 10 | uncommon (green) | 4 of the 7 modifiers |
-| Homing | 10 | epic (blue) | curve toward locked enemy |
-| Multishot | 10 | legendary (gold) | +1 projectile per level |
-| Bounce | 3 | legendary (gold) | spawns full clone bullets that chain (ADR-0005) |
-| HP | ∞ | rare (orange) | max HP up |
-| Extra Life | ∞ | very rare (purple) | +1 life |
+| Homing | 10 | epic (purple) | curve toward locked enemy |
+| Multishot | 10 | legendary (orange) | +1 projectile per level |
+| Bounce | 3 | legendary (orange) | spawns full clone bullets that chain (ADR-0005) |
+| HP | ∞ | rare (blue) | max HP up |
+| Extra Life | ∞ | epic (purple) | +1 life |
 
 Per-upgrade `cap`, `weight`, and effect curve all configurable.
 
@@ -87,7 +87,7 @@ Per-upgrade `cap`, `weight`, and effect curve all configurable.
 
 ## 10. Screens & flow
 - **Main menu:** Start, Credits, Exit. **Exit = `window.close()`** (works under nw.js / script-opened windows; no-op in a normal tab).
-- **Credits:** "Space Shooter 3" · Created by Mathieu · Art by **Vadim — anim86** (anim86.itch.io, anim86.com) · Built with PixiJS · Back button.
+- **Credits:** "Space Shooter 3" · Created by Mathieu · Art by **Lil Cthulhu** (lil-cthulhu.itch.io) · Built with PixiJS · Back button.
 - **Game over:** this Run's stats vs. persisted bests + Play Again.
 
 ## 11. Persistence (localStorage)

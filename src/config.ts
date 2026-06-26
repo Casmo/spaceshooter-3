@@ -270,20 +270,13 @@ export const STAR = {
 } as const;
 
 /** Upgrade rarity tiers and their card colors (low -> high). */
-export type Rarity =
-  | "common"
-  | "uncommon"
-  | "rare"
-  | "veryRare"
-  | "epic"
-  | "legendary";
+export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export const RARITY_COLORS: Record<Rarity, number> = {
   common: 0x9aa0a6, // gray
   uncommon: 0x57d957, // green
-  rare: 0xff9933, // orange
-  veryRare: 0xb066ff, // purple
-  epic: 0xff5fd0, // magenta
-  legendary: 0xffd24a, // gold
+  rare: 0x4aa3ff, // blue
+  epic: 0xb066ff, // purple
+  legendary: 0xff9933, // orange
 };
 
 /** The non-modifier upgrade pool (bullet modifiers are added in #6).
@@ -299,7 +292,7 @@ export const UPGRADES = {
   },
   fireRate: { cap: 0, weight: 10, rarity: "common", mult: 0.95 },
   maxHp: { cap: 0, weight: 3, rarity: "rare", amount: 25 },
-  extraLife: { cap: 0, weight: 1, rarity: "veryRare" },
+  extraLife: { cap: 0, weight: 3, rarity: "epic" },
   pickupRange: { cap: 10, weight: 6, rarity: "uncommon", amount: 120 },
 } as const;
 

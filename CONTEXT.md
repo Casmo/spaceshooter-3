@@ -69,7 +69,7 @@ The bond between a Homing bullet and the one enemy it steers toward. A Lock last
 _Avoid_: aim, target (as a verb), retarget.
 
 **Rarity**:
-The weight class governing how often an Upgrade type appears in the draw, shown by card color: **gray** = common, **green** = uncommon, **orange** = rare, **purple** = very rare.
+The tier of an Upgrade type, shown by card color across five levels: **gray** = common, **green** = uncommon, **blue** = rare, **purple** = epic, **orange** = legendary. Rarity is cosmetic — draw frequency is governed by each type's `weight`, not its tier. See ADR-0007.
 
 ### Combat & waves
 
