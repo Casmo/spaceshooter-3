@@ -7,6 +7,7 @@ import {
   SCORE,
   MODIFIER_FX,
   VIRTUAL_WIDTH,
+  VIRTUAL_HEIGHT,
 } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
@@ -87,29 +88,54 @@ export class GameScene implements Scene {
   private pendingDx = 0;
   private pendingDy = 0;
   private firing = false;
-  /** True only while we release the pointer lock ourselves (opening the upgrade
-   *  prompt), so the lock-change handler doesn't read it as a loss → pause. */
-  private expectedUnlock = false;
+  /** Menu Cursor position (virtual px) while an Upgrade Prompt is open. The lock
+   *  stays held through the prompt (ADR-0008), so the mouse drives this instead
+   *  of steering, and a left-click picks the hovered card. */
+  private cursorX = 0;
+  private cursorY = 0;
 
   private readonly onMouseMove = (e: MouseEvent) => {
     if (!this.isLocked) return;
+    // Lock held through the prompt: motion drives the Menu Cursor, not steering.
+    if (this.prompt) {
+      const scale = this.manager.scale || 1;
+      this.cursorX = clamp(
+        this.cursorX + e.movementX / scale,
+        0,
+        VIRTUAL_WIDTH,
+      );
+      this.cursorY = clamp(
+        this.cursorY + e.movementY / scale,
+        0,
+        VIRTUAL_HEIGHT,
+      );
+      this.prompt.moveCursor(this.cursorX, this.cursorY);
+      return;
+    }
     this.pendingDx += e.movementX;
     this.pendingDy += e.movementY;
   };
   private readonly onPointerDown = (e: FederatedPointerEvent) => {
-    if (e.button === 0) this.firing = true;
+    if (e.button !== 0) return;
+    // While the prompt is up a left-click selects the hovered card — but not
+    // while paused over it: the PauseOverlay's Resume click bubbles to the stage
+    // and would otherwise pick a card behind the overlay.
+    if (this.prompt) {
+      if (!this.paused) this.prompt.press();
+      return;
+    }
+    this.firing = true;
   };
   private readonly onPointerUp = (e: FederatedPointerEvent) => {
     if (e.button === 0) this.firing = false;
   };
   /** Single source of truth for entering/leaving active gameplay: losing the
-   *  lock (Esc, alt-tab, OS steal) pauses; (re)acquiring it resumes. */
+   *  lock (Esc, alt-tab, OS steal) pauses; (re)acquiring it resumes. The only
+   *  release we ever initiate now is at game-over (ADR-0008), so every loss
+   *  seen here is unexpected — no expected/unexpected bookkeeping needed. */
   private readonly onPointerLockChange = () => {
     if (this.isLocked) {
-      this.expectedUnlock = false;
       this.onLockAcquired();
-    } else if (this.expectedUnlock) {
-      this.expectedUnlock = false;
     } else {
       this.pauseFromLockLoss();
     }
@@ -214,7 +240,9 @@ export class GameScene implements Scene {
   /** Lock lost without us asking (Esc, alt-tab, OS steal) → pause. Resume
    *  re-locks, which resumes gameplay via onLockAcquired. */
   private pauseFromLockLoss(): void {
-    if (this.paused || this.prompt) return;
+    if (this.paused) return;
+    // A lock loss with a prompt open (player hit Esc mid-menu) pauses over it;
+    // Resume re-locks and the still-open prompt is there to finish (ADR-0008).
     this.firing = false;
     this.paused = true;
     this.pauseOverlay = new PauseOverlay({
@@ -518,13 +546,12 @@ export class GameScene implements Scene {
   /** Open the level-up prompt for the next pending level-up (pauses the game). */
   private showPrompt(): void {
     playSound("levelup");
-    // Free the cursor so cards are clickable; flag it as an expected release so
-    // the lock-change handler doesn't stack a pause on top.
-    if (this.isLocked) {
-      this.expectedUnlock = true;
-      document.exitPointerLock();
-    }
+    // Keep the lock held (ADR-0008): re-acquiring it on every pick is what
+    // re-triggered the browser's pointer-lock notice. The Menu Cursor (drawn by
+    // the prompt) handles selection instead. Start it centered.
     this.firing = false;
+    this.cursorX = VIRTUAL_WIDTH / 2;
+    this.cursorY = VIRTUAL_HEIGHT / 2;
     const choices = this.upgrades.draw(3);
     this.prompt = new UpgradePrompt(choices, (def) => this.applyPick(def));
     this.view.addChild(this.prompt.view);
@@ -535,13 +562,9 @@ export class GameScene implements Scene {
     this.prompt?.view.destroy({ children: true });
     this.prompt = undefined;
     this.pendingLevelUps -= 1;
-    if (this.pendingLevelUps > 0) {
-      this.showPrompt();
-    } else {
-      // Re-capture the cursor (inside this card-click gesture); gameplay resumes
-      // once the lock engages, via onLockAcquired.
-      this.requestLock();
-    }
+    // The lock was never released, so there's nothing to re-acquire: showing the
+    // next prompt or (queue empty) clearing it lets update() resume on its own.
+    if (this.pendingLevelUps > 0) this.showPrompt();
   }
 
   private updateOverlay(): void {
@@ -573,6 +596,10 @@ export class GameScene implements Scene {
     // and the paused state is already unlocked for Quit).
     this.view.destroy({ children: true });
   }
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return v < min ? min : v > max ? max : v;
 }
 
 interface Circle {

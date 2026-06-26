@@ -10,6 +10,10 @@ A browser-based, vertical-scrolling roguelike shoot-'em-up built with PixiJS. Ea
 How the player moves the ship: by the mouse's *motion*, not its position. Moving the mouse nudges the ship a proportional distance and it eases to a stop when the hand stops — there is no on-screen point the ship "goes to." The mouse only ever moves the ship; the weapon always fires straight up. Improved by the Engine Upgrade.
 _Avoid_: aiming (there is no aim), cursor-follow, point-and-go.
 
+**Menu Cursor**:
+The drawn pointer the player uses to pick a card on the Upgrade Prompt. It exists only while a prompt is open: because the mouse stays captured (so the every-pick browser lock notice never re-fires — see ADR-0008), the system cursor is hidden, so the game draws its own and moves it by the same mouse motion that Steers. It tracks an on-screen position — unlike Steering, here position is the whole point. It never appears during normal play.
+_Avoid_: reticle, crosshair (there is none in play — see ADR-0006), system cursor, pointer.
+
 ### Run & progression
 
 **Run**:
