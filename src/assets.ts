@@ -1,42 +1,125 @@
-import { Assets, type Texture } from "pixi.js";
+import { Assets, Rectangle, Texture } from "pixi.js";
 
 /**
- * Shared asset loader. Aliases map a stable name to a file under /public/assets.
- * Later issues add their sprites here; gameplay code references aliases via
- * getTexture(), never raw paths.
+ * Shared asset loader for the SpaceShooter pixel-art pack. Aliases map a stable
+ * name to a file under /public/assets/SpaceShooter; gameplay code references
+ * aliases via getTexture()/getFrames(), never raw paths.
+ *
+ * The pack is low-res pixel art rendered at native size on the 1920x1080 field
+ * (no upscaling — see the asset-refactor session), so every source is sampled
+ * nearest-neighbour to stay crisp. Several assets ship as horizontal sprite
+ * sheets; loadAssets() slices those into per-frame Textures.
+ *
+ * Folder names with spaces are URL-encoded (%20) so the dev server / fetch
+ * resolve them.
  */
+const PROJECTILES_DIR = "./assets/SpaceShooter/Projectiles%20And%20Explosions";
+
+/** Base files loaded by the Assets system (sheets included, sliced below). */
 const MANIFEST = {
-  bg: "./assets/bg.png",
-  starsA: "./assets/Stars-A.png",
-  starsB: "./assets/Stars-B.png",
-  ship: "./assets/SpaceShip.png",
-  star: "./assets/star.png",
-  bullet: "./assets/bullet.png",
-  swarmer: "./assets/insect-1.png",
-  gunner: "./assets/insect-2.png",
-  enemyBullet: "./assets/plasm.png",
-  asteroidLarge: "./assets/large-A.png",
-  asteroidMedium: "./assets/medium-A.png",
-  asteroidSmall: "./assets/small-A.png",
-  // Player projectile skins selected by active modifiers.
-  plasm: "./assets/plasm.png",
-  laser1: "./assets/laser-1.png",
-  laser2: "./assets/laser-2.png",
-  laser3: "./assets/laser-3.png",
-  rocket: "./assets/rocket.png",
-  fire: "./assets/fire.png",
+  ship: "./assets/SpaceShooter/Player/Player01-Sheet.png",
+  swarmer: "./assets/SpaceShooter/Enemies/fighter1.png",
+  gunner: "./assets/SpaceShooter/Enemies/Gunship.png",
+  miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
+  asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
+  bullet: `${PROJECTILES_DIR}/Projectile04.png`,
+  enemyBullet: `${PROJECTILES_DIR}/Projectile03.png`,
+  explosion: `${PROJECTILES_DIR}/Explosion02-Sheet.png`,
+  star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
+  bg: "./assets/SpaceShooter/Backgrounds/Space_01-Sheet.png",
 } as const;
 
-export type AssetAlias = keyof typeof MANIFEST;
+/** Every texture alias gameplay code can resolve via getTexture(). */
+export type AssetAlias =
+  | "ship"
+  | "swarmer"
+  | "gunner"
+  | "miniboss"
+  | "asteroidLarge"
+  | "asteroidMedium"
+  | "asteroidSmall"
+  | "bullet"
+  | "enemyBullet"
+  | "star"
+  | "smoke"
+  | "bg"
+  | "explosion";
 
-/** Load every manifest asset. Call once during boot, before any scene. */
+/** Aliases backed by an animation sheet (resolved via getFrames()). */
+export type FrameAlias = "ship" | "star" | "explosion";
+
+const textures = new Map<AssetAlias, Texture>();
+const frameSets = new Map<FrameAlias, Texture[]>();
+
+/** Slice a horizontal sprite sheet into `count` equal frames (full height). */
+function sliceFrames(
+  base: Texture,
+  frameWidth: number,
+  count: number,
+): Texture[] {
+  const frames: Texture[] = [];
+  for (let i = 0; i < count; i++) {
+    frames.push(
+      new Texture({
+        source: base.source,
+        frame: new Rectangle(i * frameWidth, 0, frameWidth, base.height),
+      }),
+    );
+  }
+  return frames;
+}
+
+/** Load every manifest asset, then derive frames and named textures. */
 export async function loadAssets(): Promise<void> {
   await Assets.load(
     Object.entries(MANIFEST).map(([alias, src]) => ({ alias, src })),
   );
+
+  // Pixel art: sample everything nearest-neighbour so it stays crisp. Frames
+  // share their sheet's source, so setting it on the base covers them too.
+  for (const alias of Object.keys(MANIFEST)) {
+    (Assets.get(alias) as Texture).source.scaleMode = "nearest";
+  }
+
+  // Direct single-texture mappings.
+  textures.set("swarmer", Assets.get("swarmer"));
+  textures.set("gunner", Assets.get("gunner"));
+  textures.set("miniboss", Assets.get("miniboss"));
+  textures.set("bullet", Assets.get("bullet"));
+  textures.set("enemyBullet", Assets.get("enemyBullet"));
+  textures.set("bg", Assets.get("bg"));
+
+  // Player ship: 5 banking frames (48x48). The HUD life-icon uses the centre.
+  const shipFrames = sliceFrames(Assets.get("ship"), 48, 5);
+  frameSets.set("ship", shipFrames);
+  textures.set("ship", shipFrames[2]);
+
+  // XP pickup: spinning coin, 5 frames (16x16).
+  frameSets.set("star", sliceFrames(Assets.get("star"), 16, 5));
+
+  // Explosion burst: 10 frames (64x64). A late, smoky frame doubles as the
+  // Burn/Homing trail puff so trails don't each spawn a full animation.
+  const explosionFrames = sliceFrames(Assets.get("explosion"), 64, 10);
+  frameSets.set("explosion", explosionFrames);
+  textures.set("smoke", explosionFrames[6]);
+
+  // Asteroids: one 12-frame sheet (64x64); pick three distinct sizes.
+  const asteroidFrames = sliceFrames(Assets.get("asteroids"), 64, 12);
+  textures.set("asteroidLarge", asteroidFrames[0]);
+  textures.set("asteroidMedium", asteroidFrames[2]);
+  textures.set("asteroidSmall", asteroidFrames[4]);
 }
 
 /** Resolve a loaded texture by alias. */
 export function getTexture(alias: AssetAlias): Texture {
-  return Assets.get(alias);
+  const tex = textures.get(alias);
+  if (!tex) throw new Error(`Texture not loaded: ${alias}`);
+  return tex;
+}
+
+/** Resolve the frame array for an animated (sheet-backed) alias. */
+export function getFrames(alias: FrameAlias): Texture[] {
+  const frames = frameSets.get(alias);
+  if (!frames) throw new Error(`Frames not loaded: ${alias}`);
+  return frames;
 }

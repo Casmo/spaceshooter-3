@@ -8,20 +8,16 @@
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
 
-/** Parallax starfield scroll speeds, in virtual px/second (top -> bottom). */
+/** Single scrolling space background (the pixel-art pack has no separate star
+ *  layers, so the old 3-layer parallax collapses to one). Virtual px/second. */
 export const STARFIELD = {
-  /** Far background nebula — slowest. */
-  bgSpeed: 8,
-  /** Mid star layer. */
-  starsASpeed: 28,
-  /** Near star layer — fastest, strongest parallax. */
-  starsBSpeed: 55,
+  scrollSpeed: 40,
 } as const;
 
 /** Player ship movement, placement, and survival. */
 export const PLAYER = {
-  /** Display scale applied to SpaceShip.png. */
-  scale: 0.5,
+  /** Display scale. Native size (1.0) — the pixel-art ship is not upscaled. */
+  scale: 1,
   /** Spawn position (virtual coords). */
   startX: VIRTUAL_WIDTH / 2,
   startY: VIRTUAL_HEIGHT * 0.8,
@@ -55,8 +51,8 @@ export const WEAPON = {
   cooldown: 0.3,
   /** Bullet travel speed upward, virtual px/second. */
   bulletSpeed: 1400,
-  /** Display scale applied to bullet.png. */
-  bulletScale: 0.4,
+  /** Display scale applied to the bullet sprite. Native size (1.0). */
+  bulletScale: 1,
   /** Damage per bullet. Shooting Power upgrade raises this later. */
   damage: 12,
   /** Collision radius of a bullet as a fraction of its half-width. */
@@ -65,7 +61,7 @@ export const WEAPON = {
 
 /** Swarmer enemy (insect-1): fast, low HP, contact-only. */
 export const SWARMER = {
-  scale: 0.7,
+  scale: 1,
   hp: 24,
   /** HP removed from the player on contact. */
   contactDamage: 20,
@@ -80,7 +76,7 @@ export const SWARMER = {
 
 /** Gunner enemy (insect-2): tougher, slower, fires aimed shots at the player. */
 export const GUNNER = {
-  scale: 0.8,
+  scale: 1,
   hp: 70,
   contactDamage: 25,
   speed: 72,
@@ -111,7 +107,7 @@ export const ASTEROID: Record<
     hp: 90,
     contactDamage: 30,
     speed: 78,
-    scale: 0.9,
+    scale: 1,
     spin: 0.5,
     splitInto: "medium",
     splitCount: 2,
@@ -122,7 +118,7 @@ export const ASTEROID: Record<
     hp: 45,
     contactDamage: 22,
     speed: 104,
-    scale: 0.9,
+    scale: 1,
     spin: 0.8,
     splitInto: "small",
     splitCount: 2,
@@ -133,7 +129,7 @@ export const ASTEROID: Record<
     hp: 20,
     contactDamage: 15,
     speed: 138,
-    scale: 0.9,
+    scale: 1,
     spin: 1.2,
     splitInto: null,
     splitCount: 0,
@@ -143,7 +139,7 @@ export const ASTEROID: Record<
 
 /** Mini-boss: scaled-up Gunner, wave-5 capstone, fires a fan at the player. */
 export const MINIBOSS = {
-  scale: 2.2,
+  scale: 1,
   hp: 900,
   /** HP scaling per mini-boss appearance (gets tougher each time). */
   hpPerAppearance: 0.5,
@@ -160,9 +156,9 @@ export const MINIBOSS = {
   radiusFactor: 0.7,
 } as const;
 
-/** Enemy projectile (recolored plasm.png, tinted by damage tier). */
+/** Enemy projectile (Projectile03 circle, tinted by damage tier). */
 export const ENEMY_BULLET = {
-  scale: 0.45,
+  scale: 1,
   speed: 540,
   radiusFactor: 0.7,
 } as const;
@@ -251,9 +247,9 @@ export const SCORE = {
   waveClearBase: 25,
 } as const;
 
-/** Star pickup: the only collectible in v1 (XP only). */
+/** Star pickup: the only collectible in v1 (XP only). Native-size coin. */
 export const STAR = {
-  scale: 0.5,
+  scale: 1,
   /** Seconds before an uncollected star expires. */
   lifetime: 5,
   /** Drop chance per normal kill (mini-boss always drops one). */
@@ -346,7 +342,8 @@ export const MODIFIER_FX = {
     rocketHoming: 0x66ddff,
     burn: 0xff8a3d,
     homingTrail: 0x66ddff,
-    burnTrail: 0xff8a3d,
+    // Burn now reads as smoke (grey puffs), not orange flame.
+    burnTrail: 0x9a9a9a,
     explosion: 0xff5533,
   },
 } as const;

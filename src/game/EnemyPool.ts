@@ -194,7 +194,7 @@ export class Enemy {
   }
 
   spawnMiniBoss(mods: WaveMods, appearance: number): void {
-    this.reset("gunner", MINIBOSS.scale);
+    this.reset("miniboss", MINIBOSS.scale);
     this.kind = "miniboss";
     this.mods = mods;
     this.xpValue = XP.miniboss;

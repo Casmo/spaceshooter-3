@@ -1,4 +1,4 @@
-import { Sprite } from "pixi.js";
+import { Sprite, type Texture } from "pixi.js";
 import {
   PLAYER,
   WEAPON,
@@ -7,7 +7,7 @@ import {
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
 } from "../config";
-import { getTexture } from "../assets";
+import { getTexture, getFrames } from "../assets";
 import { ProjectilePool } from "./ProjectilePool";
 import { createModifiers, type WeaponModifiers } from "./WeaponModifiers";
 import { resolveBulletVisual } from "./weaponVisual";
@@ -47,6 +47,8 @@ export class Player {
   private fireTimer = 0;
   private readonly halfWidth: number;
   private readonly halfHeight: number;
+  /** Banking frames: 0 = hard-left .. 2 = centre .. 4 = hard-right. */
+  private readonly bankFrames: Texture[] = getFrames("ship");
 
   constructor(private readonly bullets: ProjectilePool) {
     this.sprite = new Sprite(getTexture("ship"));
@@ -130,6 +132,13 @@ export class Player {
       this.halfHeight,
       VIRTUAL_HEIGHT - this.halfHeight,
     );
+
+    // Bank into the horizontal movement: lean left/right by speed, level at rest.
+    const vx = dt > 0 ? stepX / dt : 0;
+    this.sprite.texture =
+      this.bankFrames[
+        vx <= -600 ? 0 : vx <= -120 ? 1 : vx >= 600 ? 4 : vx >= 120 ? 3 : 2
+      ];
   }
 
   private shoot(dt: number, firing: boolean): void {
@@ -146,7 +155,7 @@ export class Player {
     const count = 1 + m.multishot * MODIFIERS.multishotPerLevel;
     const pierce = m.pierce * MODIFIERS.piercePerLevel;
 
-    const visual = resolveBulletVisual(m);
+    const visual = resolveBulletVisual();
     const texture = getTexture(visual.alias);
 
     // Effect parameters derived from modifier levels.

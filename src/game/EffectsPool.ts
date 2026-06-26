@@ -1,5 +1,5 @@
-import { Container, Sprite } from "pixi.js";
-import { getTexture, type AssetAlias } from "../assets";
+import { AnimatedSprite, Container, Sprite } from "pixi.js";
+import { getTexture, getFrames, type AssetAlias } from "../assets";
 
 /** A short-lived visual: a sprite that fades out (and optionally grows). */
 class Effect {
@@ -23,13 +23,18 @@ class Effect {
 }
 
 /**
- * Pooled, non-interactive decorative effects: explosion flashes and the trail
- * puffs dropped by Homing/Burn bullets. Purely cosmetic — no collision.
+ * Pooled, non-interactive decorative effects: animated explosion bursts and the
+ * fading trail puffs dropped by Homing/Burn bullets. Purely cosmetic — no
+ * collision.
+ *
+ * Puffs are manually faded each update(). Explosions are AnimatedSprites that
+ * play once on the shared ticker and recycle themselves via onComplete.
  */
 export class EffectsPool {
   readonly view = new Container();
   private readonly all: Effect[] = [];
   private readonly live: Effect[] = [];
+  private readonly explosions: AnimatedSprite[] = [];
 
   private obtain(): Effect {
     const found = this.all.find((e) => !e.active);
@@ -63,6 +68,32 @@ export class EffectsPool {
     e.fromScale = fromScale;
     e.toScale = toScale;
     this.live.push(e);
+  }
+
+  private obtainExplosion(): AnimatedSprite {
+    const found = this.explosions.find((a) => !a.visible);
+    if (found) return found;
+    const a = new AnimatedSprite(getFrames("explosion"));
+    a.anchor.set(0.5);
+    a.loop = false;
+    a.animationSpeed = 0.4;
+    a.visible = false;
+    a.onComplete = () => {
+      a.visible = false;
+    };
+    this.explosions.push(a);
+    this.view.addChild(a);
+    return a;
+  }
+
+  /** Play a one-shot explosion burst centred at (x, y), sized by `scale`. */
+  explode(x: number, y: number, scale: number, tint = 0xffffff): void {
+    const a = this.obtainExplosion();
+    a.visible = true;
+    a.tint = tint;
+    a.position.set(x, y);
+    a.scale.set(scale);
+    a.gotoAndPlay(0);
   }
 
   update(dt: number): void {

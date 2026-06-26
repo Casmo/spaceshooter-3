@@ -75,14 +75,14 @@ The single high-HP enemy that caps every 5th Wave with a simple attack pattern. 
 _Avoid_: boss (no full bosses in v1).
 
 **Swarmer**:
-A small, fast, low-HP enemy that flies in formations/sine paths and deals contact damage only. (`insect-1`)
+A small, fast, low-HP enemy that flies in formations/sine paths and deals contact damage only. (`fighter1`)
 
 **Gunner**:
-A larger, slower, higher-HP enemy that periodically fires at the player. (`insect-2`)
+A larger, slower, higher-HP enemy that periodically fires at the player. (`Gunship`)
 
 **Asteroid**:
-A non-shooting hazard that drifts down dealing contact damage and, when destroyed, splits into smaller Asteroids per its split count. (`small/medium/large-A/B`)
+A non-shooting hazard that drifts down dealing contact damage and, when destroyed, splits into smaller Asteroids per its split count. (`Asteroids-Sheet` frames)
 
 **Star**:
-The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. (`star.png`)
+The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. Rendered as a spinning coin. (`Credits-Sheet`)
 _Avoid_: gem, orb, XP drop.

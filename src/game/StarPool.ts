@@ -1,19 +1,21 @@
-import { Container, Sprite } from "pixi.js";
+import { AnimatedSprite, Container } from "pixi.js";
 import { STAR, XP } from "../config";
-import { getTexture } from "../assets";
+import { getFrames } from "../assets";
 
-/** A pooled XP star: drifts in place, eases toward the ship within pickup range. */
+/** A pooled XP star: a spinning coin that eases toward the ship within range. */
 class Star {
-  readonly sprite: Sprite;
+  readonly sprite: AnimatedSprite;
   active = false;
   life = 0;
   radius = 0;
 
   constructor() {
-    this.sprite = new Sprite(getTexture("star"));
+    this.sprite = new AnimatedSprite(getFrames("star"));
     this.sprite.anchor.set(0.5);
     this.sprite.scale.set(STAR.scale);
+    this.sprite.animationSpeed = 0.15;
     this.sprite.visible = false;
+    this.sprite.play();
     this.radius = (this.sprite.width / 2) * 0.8;
   }
 
