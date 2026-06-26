@@ -1,0 +1,11 @@
+# The Upgrade Prompt holds Pointer Lock and draws its own Menu Cursor
+
+ADR-0006 had us *release* Pointer Lock whenever the Upgrade Prompt opened — the system cursor returned and the player clicked a card normally, then the card-pick re-`requestPointerLock()`ed to resume play. That worked, but Chromium re-shows its "Pointer is locked — press Esc" notification on *every* lock (re-)acquisition, so the player got the toast on every single Level-up. That repeated nag was the whole problem.
+
+So the prompt now **keeps the lock held**. We never release on open and never re-acquire on pick, so the browser notice never re-fires. The cost: a locked pointer hides the system cursor and freezes Pixi's pointer coordinates (button events still flow, positions don't), so the menu can't be a normal point-and-click. We pay for it with a **Menu Cursor**: a sprite we draw and move by the same raw `movementX/Y` deltas that Steer the ship, and manual hit-testing of the cursor's position against the card rectangles for hover and click. The cursor maps motion 1:1 (no Engine sensitivity), is clamped to the field, and recenters on each prompt.
+
+This deletes the `expectedUnlock` bookkeeping ADR-0006 introduced: that flag existed only to tell our *own* prompt-release apart from an unexpected lock loss, and we no longer release the lock ourselves anywhere except game-over. With it gone, **every** lock loss is unexpected and routes to the pause overlay — including pressing Esc while the menu is open, which now pauses over the prompt (Resume re-locks and the prompt finishes) rather than stranding a frozen cursor.
+
+Considered and rejected: **keep releasing the lock** (ADR-0006's scheme) — simplest, no custom cursor or manual hit-testing, but it is exactly the every-Level-up toast we set out to kill. **A keyboard-only menu** (1/2/3 to pick) under the held lock — sidesteps the cursor entirely, but the menu has always been click-driven and this was explicitly out of scope.
+
+Amends ADR-0006: its "we exit the lock ourselves when the Upgrade Prompt opens" clause and the expected/unexpected-release distinction no longer hold. ADR-0006's core decision — relative mouse Steering under a mandatory lock during play, with no in-play reticle — stands unchanged.

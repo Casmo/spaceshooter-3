@@ -32,6 +32,9 @@ const MANIFEST = {
   // Parallax background layers (nebula = slow/far, stars = faster/near).
   nebula: "./assets/SpaceShooter/Backgrounds/BG_Nebula.png",
   starsA: "./assets/SpaceShooter/Backgrounds/BG_Stars1.png",
+  // Menu Cursor: drawn pointer for the (lock-held) Upgrade Prompt. Lives outside
+  // the SpaceShooter pack as a placeholder art (see ADR-0008).
+  cursor: "./assets/cursor.png",
 } as const;
 
 /** Every texture alias gameplay code can resolve via getTexture(). */
@@ -49,6 +52,7 @@ export type AssetAlias =
   | "smoke"
   | "nebula"
   | "starsA"
+  | "cursor"
   | "explosion";
 
 /** Aliases backed by an animation sheet (resolved via getFrames()). */
@@ -95,6 +99,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("enemyBullet", Assets.get("enemyBullet"));
   textures.set("nebula", Assets.get("nebula"));
   textures.set("starsA", Assets.get("starsA"));
+  textures.set("cursor", Assets.get("cursor"));
 
   // Player ship: 5 banking frames (48x48). The HUD life-icon uses the centre.
   const shipFrames = sliceFrames(Assets.get("ship"), 48, 5);
