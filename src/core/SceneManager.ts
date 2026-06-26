@@ -37,7 +37,15 @@ export class SceneManager {
     this.root.addChild(this.mask);
     this.root.mask = this.mask;
 
-    window.addEventListener("resize", () => this.resize());
+    // Recompute on the renderer's own resize event, NOT window "resize".
+    // With resizeTo: window (see main.ts), Pixi defers the actual canvas resize
+    // to the next animation frame, so app.screen is still the OLD size during a
+    // window resize event — reading it there yields a stale scale/offset and
+    // leaves bottom-anchored HUD (e.g. the XP bar) stranded mid-screen. The
+    // renderer emits "resize" only after app.screen is updated, so it is the
+    // authoritative, correctly-timed trigger. Do not "simplify" this back to a
+    // window listener.
+    this.app.renderer.on("resize", () => this.resize());
     this.resize();
 
     this.app.ticker.add((ticker) => {
