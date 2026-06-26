@@ -97,6 +97,10 @@ A larger, slower, higher-HP enemy that periodically fires at the player. (`Gunsh
 **Asteroid**:
 A non-shooting hazard that drifts down dealing contact damage and, when destroyed, splits into smaller Asteroids per its split count. (`Asteroids-Sheet` frames)
 
+**Mine**:
+A flying explosive enemy that enters from the top or either side and locks a single aimed course at the player's position the instant it spawns, then flies that straight line — never re-aiming — until it is destroyed or leaves the screen. It tumbles slowly for show only; the spin never bends its path. It detonates when **destroyed** (shot down, caught in an Explosive blast, or burned to death) and on **contact** with the player, dealing area damage to the player alone. An escaping Mine that flies off-screen does **not** detonate — dodging is the safe outcome. The first enemy whose death is itself a threat. Enters mid-run, not from wave 1. (`Asteroids_Explosive`)
+_Avoid_: "stationary" (this Mine flies), Asteroid (Mines don't split), Kamikaze/suicide (a Mine can miss and sail off).
+
 **Star**:
 The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. Rendered as a spinning coin. (`Credits-Sheet`)
 _Avoid_: gem, orb, XP drop.

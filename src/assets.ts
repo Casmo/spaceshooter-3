@@ -20,12 +20,15 @@ const MANIFEST = {
   swarmer: "./assets/SpaceShooter/Enemies/fighter1.png",
   gunner: "./assets/SpaceShooter/Enemies/Gunship.png",
   miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
+  mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
   asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
   bullet: "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile04.png",
   enemyBullet:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
   explosion:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion02-Sheet.png",
+  explosionBig:
+    "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion04-Sheet.png",
   explosionSmall:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion01-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
@@ -43,6 +46,7 @@ export type AssetAlias =
   | "swarmer"
   | "gunner"
   | "miniboss"
+  | "mine"
   | "asteroidLarge"
   | "asteroidMedium"
   | "asteroidSmall"
@@ -56,7 +60,12 @@ export type AssetAlias =
   | "explosion";
 
 /** Aliases backed by an animation sheet (resolved via getFrames()). */
-export type FrameAlias = "ship" | "star" | "explosion" | "explosionSmall";
+export type FrameAlias =
+  | "ship"
+  | "star"
+  | "explosion"
+  | "explosionBig"
+  | "explosionSmall";
 
 const textures = new Map<AssetAlias, Texture>();
 const frameSets = new Map<FrameAlias, Texture[]>();
@@ -95,6 +104,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("swarmer", Assets.get("swarmer"));
   textures.set("gunner", Assets.get("gunner"));
   textures.set("miniboss", Assets.get("miniboss"));
+  textures.set("mine", Assets.get("mine"));
   textures.set("bullet", Assets.get("bullet"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
   textures.set("nebula", Assets.get("nebula"));
@@ -114,6 +124,13 @@ export async function loadAssets(): Promise<void> {
   const explosionFrames = sliceFrames(Assets.get("explosion"), 64, 10);
   frameSets.set("explosion", explosionFrames);
   textures.set("smoke", explosionFrames[6]);
+
+  // Mine detonation: a large 11-frame burst (480x480). At native scale its
+  // half-height (240) is exactly the Mine's blast radius — the art is the hitbox.
+  frameSets.set(
+    "explosionBig",
+    sliceFrames(Assets.get("explosionBig"), 480, 11),
+  );
 
   // Hit Spark burst: small 5-frame (32x32) flash played on every bullet hit.
   frameSets.set(

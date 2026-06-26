@@ -5,6 +5,7 @@ import {
   STAR,
   XP,
   SCORE,
+  MINE,
   MODIFIER_FX,
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
@@ -520,8 +521,10 @@ export class GameScene implements Scene {
       if (!enemy.active) continue;
       if (pointInRadius(enemy.x, enemy.y, enemy.radius, this.player)) {
         enemy.kill();
+        // A Mine's detonation (in destroyEnemy) deals the player damage — the
+        // player is at the blast centre — so don't also apply contact damage.
         this.destroyEnemy(enemy);
-        this.player.takeHit(enemy.contactDamage);
+        if (enemy.kind !== "mine") this.player.takeHit(enemy.contactDamage);
         return;
       }
     }
@@ -537,6 +540,26 @@ export class GameScene implements Scene {
       this.stars.spawn(enemy.x, enemy.y);
     }
     this.enemies.handleDeath(enemy);
+    // A destroyed Mine detonates — the only enemy whose death is itself a threat.
+    if (enemy.kind === "mine") this.detonateMine(enemy);
+  }
+
+  /**
+   * Mine detonation: a full-size Explosion04 burst at the Mine's position whose
+   * native footprint (240px) matches its blast radius, plus flat AoE damage to
+   * the player alone if within that radius. Fires on any destruction (gunfire,
+   * Explosive AoE, Burn kill, or player contact) — never on an off-screen escape.
+   */
+  private detonateMine(mine: Enemy): void {
+    playSound("explosion", 0.6);
+    // Scale the burst so its footprint matches the blast radius exactly.
+    const scale = MINE.explosionRadius / MINE.explosion04Half;
+    this.effects.explode(mine.x, mine.y, scale, 0xffffff, "explosionBig");
+    const dx = this.player.x - mine.x;
+    const dy = this.player.y - mine.y;
+    if (dx * dx + dy * dy <= MINE.explosionRadius * MINE.explosionRadius) {
+      this.player.takeHit(MINE.explosionDamage);
+    }
   }
 
   private awardXp(amount: number): void {
