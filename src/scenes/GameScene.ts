@@ -332,7 +332,14 @@ export class GameScene implements Scene {
     for (const bullet of this.bullets.activeProjectiles) {
       if (!bullet.active) continue;
       for (const enemy of this.enemies.activeEnemies) {
-        if (!enemy.active || bullet.hits.has(enemy)) continue;
+        if (!enemy.active) continue;
+        // A Warden with a live Shield needs the node/gap/body resolution; a shot
+        // in a gap passes through (not consumed) instead of hitting the body.
+        if (enemy.hasLiveShield) {
+          if (this.resolveShieldedHit(bullet, enemy, bounceSpawns)) break;
+          continue;
+        }
+        if (bullet.hits.has(enemy)) continue;
         if (!circlesOverlap(bullet, enemy)) continue;
 
         bullet.hits.add(enemy);
@@ -352,6 +359,60 @@ export class GameScene implements Scene {
       this.spawnBounce(bullet, source);
   }
 
+  /**
+   * Resolve one bullet against a Shielded Warden (ADR-0012): test the outer ring
+   * of live Shield Nodes first, then the body if the shot threaded a gap. A Node
+   * hit chips that Node (Explosive still blasts through to the body; Burn lights
+   * the Node); a body hit is the normal hit. Pierce treats a Node and the body as
+   * separate hits. Returns true when the bullet is consumed (stop scanning).
+   */
+  private resolveShieldedHit(
+    bullet: Projectile,
+    enemy: Enemy,
+    bounceSpawns: { bullet: Projectile; source: Enemy }[],
+  ): boolean {
+    for (const node of enemy.shieldNodes) {
+      if (!node.alive || bullet.hits.has(node)) continue;
+      if (!circlesOverlap(bullet, node)) continue;
+      bullet.hits.add(node);
+      this.effects.spark(bullet.x, bullet.y);
+      enemy.damageShieldNode(node, bullet.damage);
+      if (bullet.burnDps > 0)
+        node.applyBurn(bullet.burnDps, bullet.burnDuration);
+      // Explosive bypasses the Shield (ADR-0012): detonate centred on the body
+      // (not the outer Node) so the blast reliably reaches it at any Explosive
+      // level — the orbit radius can exceed the base blast radius. No exclude, so
+      // the body and any nearby enemies take the AoE.
+      if (bullet.explosiveRadius > 0)
+        this.explode(
+          enemy.x,
+          enemy.y,
+          bullet.explosiveRadius,
+          bullet.explosiveDamage,
+        );
+      if (bullet.pierceRemaining > 0) {
+        bullet.pierceRemaining -= 1;
+        return false;
+      }
+      bullet.kill();
+      return true;
+    }
+    // No Node intercepted: a shot through a gap hits the body normally.
+    if (!bullet.hits.has(enemy) && circlesOverlap(bullet, enemy)) {
+      bullet.hits.add(enemy);
+      this.applyBulletHit(bullet, enemy);
+      if (bullet.bounceRemaining > 0)
+        bounceSpawns.push({ bullet, source: enemy });
+      if (bullet.pierceRemaining > 0) {
+        bullet.pierceRemaining -= 1;
+        return false;
+      }
+      bullet.kill();
+      return true;
+    }
+    return false; // gap — pass through
+  }
+
   /** Apply one bullet→enemy hit: direct damage, burn, and explosion. */
   private applyBulletHit(bullet: Projectile, enemy: Enemy): void {
     this.effects.spark(bullet.x, bullet.y);
@@ -369,13 +430,15 @@ export class GameScene implements Scene {
     }
   }
 
-  /** Explosive AoE: damage every enemy in radius except the directly-hit one. */
+  /** Explosive AoE: damage every enemy in radius except the directly-hit one.
+   *  Called with no `exclude` when a blast is triggered on a Warden's Shield Node
+   *  — then the body is *not* excluded, so the blast bypasses the Shield (ADR-0012). */
   private explode(
     x: number,
     y: number,
     radius: number,
     damage: number,
-    exclude: Enemy,
+    exclude?: Enemy,
   ): void {
     playSound("explosion", 0.5);
     // Animated burst, sized from the AoE radius then scaled down to 0.2x.

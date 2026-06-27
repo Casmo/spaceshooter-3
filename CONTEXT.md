@@ -104,7 +104,8 @@ _Avoid_: fan (reserve "fan" for the Mini-boss's aimed spread), spread (that's a 
 A small, fast, low-HP enemy that flies in formations/sine paths and deals contact damage only. (`fighter1`)
 
 **Gunner**:
-A larger, slower, higher-HP enemy that periodically fires at the player. (`Gunship`)
+A larger, slower, higher-HP enemy that periodically fires an aimed shot at the player. From the late game (wave 15+) every Gunner instead fires a **burst** — a short volley of shots aimed once at burst start and sent down a single line, dodged by sidestepping the volley as a unit — then waits a longer cooldown before the next. The Mini-boss (a scaled Gunner) is unaffected; it keeps its aimed fan. (`Gunship`)
+_Avoid_: fan (that's the Mini-boss's aimed spread), Curtain (the Boss's)._
 
 **Asteroid**:
 A non-shooting hazard that drifts down dealing contact damage and, when destroyed, splits into smaller Asteroids per its split count. (`Asteroids-Sheet` frames)
@@ -112,6 +113,18 @@ A non-shooting hazard that drifts down dealing contact damage and, when destroye
 **Mine**:
 A flying explosive enemy that enters from the top or either side and locks a single aimed course at the player's position the instant it spawns, then flies that straight line — never re-aiming — until it is destroyed or leaves the screen. It tumbles slowly for show only; the spin never bends its path. It detonates when **destroyed** (shot down, caught in an Explosive blast, or burned to death) and on **contact** with the player, dealing area damage to the player alone. An escaping Mine that flies off-screen does **not** detonate — dodging is the safe outcome. The first enemy whose death is itself a threat. Enters mid-run, not from wave 1. (`Asteroids_Explosive`)
 _Avoid_: "stationary" (this Mine flies), Asteroid (Mines don't split), Kamikaze/suicide (a Mine can miss and sail off).
+
+**Warden**:
+A slow late-game enemy that descends straight down behind an orbiting Shield, firing aimed shots as it comes. Midway down it makes a single slow lateral dodge, then resumes its descent and flees off the bottom if it survives. Its threat is positional: you must out-time or break its Shield while dodging its fire. Distinct from the Gunner (no Shield) and the Mini-boss/Boss (the Warden is a normal-budget enemy, not a capstone).
+_Avoid_: turret (it descends, never camps), tank, Boss.
+
+**Shield** (Warden's Shield):
+The ring of orbiting Shield Nodes that guards a Warden. Because the player's weapon only ever fires straight up, the Shield blocks shots while a Node covers the bottom and lets them through when a gap rotates into the line of fire. Beaten two ways, freely mixed: out-time the rotating gaps, or destroy Nodes to widen them permanently. Always refers to the Warden's Shield — never the player's HP.
+_Avoid_: armor, force field, HP (HP is the player's damage buffer — see HP).
+
+**Shield Node**:
+One destructible circle in a Warden's Shield. It has its own small HP pool and orbits with the others; once destroyed it is gone for good, permanently widening the gap. A shot that strikes a live Node is stopped there and never reaches the body — except an Explosive blast, which wraps past the Shield to the body, and a Bounce-bullet, which can slip through a gap from an exposed angle.
+_Avoid_: orb, segment, turret.
 
 **Star**:
 The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. Rendered as a spinning coin. (`Credits-Sheet`)

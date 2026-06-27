@@ -9,6 +9,7 @@ import {
   MINIBOSS,
   BOSS,
   MINE,
+  WARDEN,
   ENEMY_BULLET,
   WAVES,
   XP,
@@ -23,7 +24,78 @@ export type EnemyKind =
   | "asteroid"
   | "miniboss"
   | "boss"
-  | "mine";
+  | "mine"
+  | "warden";
+
+/** Hard cap on Shield Nodes per enemy (WARDEN.nodeCount must not exceed it). The
+ *  sprites are pre-allocated per pooled enemy, so this stays small. */
+const SHIELD_NODE_CAPACITY = 6;
+
+/**
+ * One destructible circle in a Warden's Shield (ADR-0012). It orbits the body at
+ * a fixed radius, spins on its own axis for flavour, has its own HP, and can be
+ * burned down. A shot striking a live Node is stopped there; the body is reached
+ * only through a gap (or by an Explosive blast, which bypasses the Shield).
+ */
+export class ShieldNode {
+  readonly sprite: Sprite;
+  alive = false;
+  hp = 0;
+  maxHp = 0;
+  /** Orbit phase offset (radians) from the Shield's shared base angle. */
+  phaseOffset = 0;
+  /** Cosmetic self-spin (rad/s). */
+  spin = 0;
+  /** Collision radius (virtual px), captured at spawn from the scaled sprite. */
+  radius = 0;
+  private burnTimer = 0;
+  private burnDps = 0;
+
+  constructor() {
+    this.sprite = new Sprite(getTexture("shieldNode"));
+    this.sprite.anchor.set(0.5);
+    this.sprite.visible = false;
+  }
+
+  get x(): number {
+    return this.sprite.x;
+  }
+  get y(): number {
+    return this.sprite.y;
+  }
+
+  /** Apply (or refresh) a burn DoT, like the body's burn. */
+  applyBurn(dps: number, duration: number): void {
+    this.burnDps += dps;
+    this.burnTimer = Math.max(this.burnTimer, duration);
+  }
+
+  /** Advance burn; returns true if this tick destroyed the Node. */
+  tickBurn(dt: number): boolean {
+    if (this.burnTimer <= 0) return false;
+    this.hp -= this.burnDps * dt;
+    this.burnTimer -= dt;
+    this.sprite.tint = 0xff7a3d;
+    if (this.hp <= 0) {
+      this.destroy();
+      return true;
+    }
+    if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+    return false;
+  }
+
+  destroy(): void {
+    this.alive = false;
+    this.sprite.visible = false;
+  }
+
+  /** Clear burn + tint for reuse. */
+  clearBurn(): void {
+    this.burnTimer = 0;
+    this.burnDps = 0;
+    this.sprite.tint = 0xffffff;
+  }
+}
 
 /** Per-frame context passed to enemies so they can shoot at the player. */
 export interface EnemyContext {
@@ -101,13 +173,34 @@ export class Enemy {
   private mineVx = 0;
   private mineVy = 0;
 
-  // Shooting (gunner / mini-boss).
+  // Shooting (gunner / mini-boss / warden).
   private canShoot = false;
   private shootInterval = 0;
   private shootTimer = 0;
   private bulletDamage = 0;
   private fanCount = 1;
   private fanSpreadDeg = 0;
+
+  // Gunner burst (wave 15+): a short volley aimed once at burst start. burstCount
+  // 1 = the plain single shot. burstRemaining/burstTimer drive the volley.
+  private burstCount = 1;
+  private burstInterval = 0;
+  private burstRemaining = 0;
+  private burstTimer = 0;
+  private burstAngle = 0;
+
+  // Warden descent + one mid-field dodge.
+  private dodgeTriggered = false;
+  private dodgeTimer = 0;
+  private dodgeDir = 1;
+
+  // Warden Shield: a ring of orbiting Shield Nodes (ADR-0012). shieldCount > 0
+  // marks an active shield; the first shieldCount entries of `nodes` are in use.
+  readonly nodes: ShieldNode[] = [];
+  private shieldCount = 0;
+  private shieldAngle = 0;
+  private orbitRadius = 0;
+  private shieldRotationSpeed = 0;
 
   // Mini-boss strafing.
   private settled = false;
@@ -137,6 +230,9 @@ export class Enemy {
     this.sprite.anchor.set(0.5);
     this.sprite.visible = false;
     this.bar.visible = false;
+    for (let i = 0; i < SHIELD_NODE_CAPACITY; i++) {
+      this.nodes.push(new ShieldNode());
+    }
   }
 
   get x(): number {
@@ -169,6 +265,13 @@ export class Enemy {
     this.shootTimer = 0;
     this.fanCount = 1;
     this.fanSpreadDeg = 0;
+    this.burstCount = 1;
+    this.burstRemaining = 0;
+    this.burstTimer = 0;
+    this.dodgeTriggered = false;
+    this.dodgeTimer = 0;
+    this.shieldCount = 0;
+    for (const node of this.nodes) node.destroy();
     this.settled = false;
     this.dashing = false;
     this.dashTime = 0;
@@ -199,7 +302,7 @@ export class Enemy {
     this.sprite.position.set(x, -this.sprite.height / 2);
   }
 
-  spawnGunner(x: number, mods: WaveMods): void {
+  spawnGunner(x: number, mods: WaveMods, wave: number): void {
     this.reset("gunner", GUNNER.scale);
     this.kind = "gunner";
     this.mods = mods;
@@ -213,8 +316,62 @@ export class Enemy {
     this.shootInterval = GUNNER.shootInterval;
     this.shootTimer = GUNNER.shootInterval;
     this.bulletDamage = GUNNER.bulletDamage;
+    // Late-game Gunners burst-fire (a single aimed shot before burstStartWave).
+    if (wave >= GUNNER.burstStartWave) {
+      this.burstCount = GUNNER.burstCount;
+      this.burstInterval = GUNNER.burstInterval;
+    }
     this.radius = (this.sprite.width / 2) * GUNNER.radiusFactor;
     this.sprite.position.set(x, -this.sprite.height / 2);
+  }
+
+  /**
+   * Spawn a Warden: a slow descending shooter ringed by an orbiting Shield of
+   * destructible Nodes (ADR-0012). Fires a single aimed shot (canShoot) and makes
+   * one slow lateral dodge at mid-field. The Shield is initialised here.
+   */
+  spawnWarden(x: number, mods: WaveMods): void {
+    this.reset("warden", WARDEN.scale);
+    this.kind = "warden";
+    this.mods = mods;
+    this.xpValue = XP.warden;
+    this.scoreValue = SCORE.warden;
+    this.hp = WARDEN.hp * mods.hpMult;
+    this.maxHp = this.hp;
+    this.contactDamage = WARDEN.contactDamage;
+    this.speed = WARDEN.speed * mods.speedMult;
+    this.canShoot = true;
+    this.shootInterval = WARDEN.shootInterval;
+    this.shootTimer = WARDEN.shootInterval;
+    this.bulletDamage = WARDEN.bulletDamage;
+    this.radius = (this.sprite.width / 2) * WARDEN.radiusFactor;
+    this.initShield(mods);
+    this.sprite.position.set(x, -this.sprite.height / 2);
+  }
+
+  /** Set up the orbiting Shield: the first WARDEN.nodeCount Nodes go live, evenly
+   *  spaced, each with its own HP (scaled by hpMult) and a random self-spin. */
+  private initShield(mods: WaveMods): void {
+    this.shieldCount = Math.min(WARDEN.nodeCount, SHIELD_NODE_CAPACITY);
+    this.orbitRadius = WARDEN.orbitRadius;
+    this.shieldRotationSpeed = WARDEN.rotationSpeed;
+    this.shieldAngle = Math.random() * Math.PI * 2;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      if (i >= this.shieldCount) {
+        node.destroy();
+        continue;
+      }
+      node.alive = true;
+      node.hp = WARDEN.nodeHp * mods.hpMult;
+      node.maxHp = node.hp;
+      node.phaseOffset = (i / this.shieldCount) * Math.PI * 2;
+      node.spin = (Math.random() < 0.5 ? -1 : 1) * WARDEN.nodeSpin;
+      node.sprite.scale.set(WARDEN.nodeScale);
+      node.radius = (node.sprite.width / 2) * WARDEN.nodeRadiusFactor;
+      node.sprite.visible = true;
+      node.clearBurn();
+    }
   }
 
   spawnAsteroid(
@@ -368,6 +525,9 @@ export class Enemy {
       case "boss":
         this.updateBoss(dt, ctx);
         break;
+      case "warden":
+        this.updateWarden(dt);
+        break;
       case "mine":
         if (!this.aimed) {
           const dx = ctx.playerX - this.sprite.x;
@@ -419,6 +579,60 @@ export class Enemy {
       .fill({ color: ENEMY_HP_BAR.trackColor, alpha: ENEMY_HP_BAR.trackAlpha })
       .rect(-w / 2, 0, w * frac, h)
       .fill(ENEMY_HP_BAR.fillColor);
+  }
+
+  /**
+   * Warden: descend straight, fire its aimed shot (via updateShooting), and make
+   * one slow lateral dodge at mid-field for flair. The orbiting Shield is updated
+   * each frame regardless.
+   */
+  private updateWarden(dt: number): void {
+    this.sprite.y += this.speed * dt;
+
+    // One-time dodge: at mid-field, pick a direction (biased away from a near
+    // edge) and drift it for dodgeDuration, then resume straight descent.
+    if (
+      !this.dodgeTriggered &&
+      this.sprite.y >= VIRTUAL_HEIGHT * WARDEN.dodgeAtYFactor
+    ) {
+      this.dodgeTriggered = true;
+      this.dodgeTimer = WARDEN.dodgeDuration;
+      const m = WARDEN.dodgeEdgeMargin;
+      this.dodgeDir =
+        this.sprite.x < m
+          ? 1
+          : this.sprite.x > VIRTUAL_WIDTH - m
+            ? -1
+            : Math.random() < 0.5
+              ? -1
+              : 1;
+    }
+    if (this.dodgeTimer > 0) {
+      this.dodgeTimer -= dt;
+      this.sprite.x += this.dodgeDir * WARDEN.dodgeSpeed * dt;
+      const margin = this.sprite.width / 2;
+      if (this.sprite.x < margin) this.sprite.x = margin;
+      else if (this.sprite.x > VIRTUAL_WIDTH - margin)
+        this.sprite.x = VIRTUAL_WIDTH - margin;
+    }
+
+    this.updateShield(dt);
+  }
+
+  /** Advance the orbiting Shield: rotate the ring, tick each live Node's burn,
+   *  and place it at its orbit position with its cosmetic self-spin. */
+  private updateShield(dt: number): void {
+    if (this.shieldCount <= 0) return;
+    this.shieldAngle += this.shieldRotationSpeed * dt;
+    for (let i = 0; i < this.shieldCount; i++) {
+      const node = this.nodes[i];
+      if (!node.alive) continue;
+      if (node.tickBurn(dt)) continue; // burned to death this frame
+      const a = this.shieldAngle + node.phaseOffset;
+      node.sprite.x = this.sprite.x + Math.cos(a) * this.orbitRadius;
+      node.sprite.y = this.sprite.y + Math.sin(a) * this.orbitRadius;
+      node.sprite.rotation += node.spin * dt;
+    }
   }
 
   private updateMiniBoss(dt: number): void {
@@ -537,25 +751,49 @@ export class Enemy {
   private updateShooting(dt: number, ctx: EnemyContext): void {
     // Hold fire until on-screen so shots aren't lobbed from above the field.
     if (this.sprite.y < 0) return;
+    // A burst in progress fires its remaining shots down the locked-in line.
+    if (this.burstRemaining > 0) {
+      this.burstTimer -= dt;
+      if (this.burstTimer <= 0) {
+        this.fireAtAngle(ctx, this.burstAngle);
+        this.burstRemaining -= 1;
+        this.burstTimer = this.burstInterval;
+      }
+      return;
+    }
     this.shootTimer -= dt;
     if (this.shootTimer > 0) return;
     this.shootTimer = this.shootInterval;
-    this.fireAtPlayer(ctx);
+    if (this.burstCount > 1) {
+      // Start a burst: lock the aim now, fire the first shot, queue the rest.
+      this.burstAngle = Math.atan2(ctx.playerY - this.y, ctx.playerX - this.x);
+      this.fireAtAngle(ctx, this.burstAngle);
+      this.burstRemaining = this.burstCount - 1;
+      this.burstTimer = this.burstInterval;
+    } else {
+      this.fireAtPlayer(ctx);
+    }
+  }
+
+  /** Fire one bullet along a fixed angle (used by the locked-aim burst). */
+  private fireAtAngle(ctx: EnemyContext, angle: number): void {
+    const speed = ENEMY_BULLET.speed;
+    ctx.fire(
+      this.x,
+      this.y,
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      this.bulletDamage,
+    );
   }
 
   private fireAtPlayer(ctx: EnemyContext): void {
     const baseAngle = Math.atan2(ctx.playerY - this.y, ctx.playerX - this.x);
-    const speed = ENEMY_BULLET.speed;
     if (this.fanCount <= 1) {
-      ctx.fire(
-        this.x,
-        this.y,
-        Math.cos(baseAngle) * speed,
-        Math.sin(baseAngle) * speed,
-        this.bulletDamage,
-      );
+      this.fireAtAngle(ctx, baseAngle);
       return;
     }
+    const speed = ENEMY_BULLET.speed;
     const spread = (this.fanSpreadDeg * Math.PI) / 180;
     for (let i = 0; i < this.fanCount; i++) {
       const a = baseAngle - spread / 2 + spread * (i / (this.fanCount - 1));
@@ -584,10 +822,38 @@ export class Enemy {
     return this.mods;
   }
 
+  /** True while at least one Shield Node still guards the body — the signal for
+   *  the collision pass to run the shielded resolution (ADR-0012). */
+  get hasLiveShield(): boolean {
+    if (this.shieldCount <= 0) return false;
+    for (let i = 0; i < this.shieldCount; i++) {
+      if (this.nodes[i].alive) return true;
+    }
+    return false;
+  }
+
+  /** All Shield Node slots, for the collision pass to test before the body. Dead
+   *  and unused slots have `alive === false`; callers skip those. Returned raw
+   *  (no allocation) since this runs per bullet in the hot collision loop. */
+  get shieldNodes(): readonly ShieldNode[] {
+    return this.nodes;
+  }
+
+  /** Damage one Shield Node; returns true if this hit destroyed it. */
+  damageShieldNode(node: ShieldNode, amount: number): boolean {
+    node.hp -= amount;
+    if (node.hp <= 0) {
+      node.destroy();
+      return true;
+    }
+    return false;
+  }
+
   kill(): void {
     this.active = false;
     this.sprite.visible = false;
     this.bar.visible = false;
+    for (const node of this.nodes) node.destroy();
   }
 }
 
@@ -605,6 +871,8 @@ export class EnemyPool {
     const e = new Enemy();
     this.all.push(e);
     this.view.addChild(e.sprite);
+    // Shield Nodes render above the body; the HP Bar floats above them all.
+    for (const node of e.nodes) this.view.addChild(node.sprite);
     this.view.addChild(e.bar);
     return e;
   }
@@ -619,9 +887,15 @@ export class EnemyPool {
     this.live.push(e);
   }
 
-  spawnGunner(mods: WaveMods): void {
+  spawnGunner(mods: WaveMods, wave: number): void {
     const e = this.obtain();
-    e.spawnGunner(this.randomTopX(), mods);
+    e.spawnGunner(this.randomTopX(), mods, wave);
+    this.live.push(e);
+  }
+
+  spawnWarden(mods: WaveMods): void {
+    const e = this.obtain();
+    e.spawnWarden(this.randomTopX(), mods);
     this.live.push(e);
   }
 

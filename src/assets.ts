@@ -22,7 +22,11 @@ const MANIFEST = {
   miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
   boss: "./assets/SpaceShooter/Enemies/fighter2.png",
   mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
+  warden: "./assets/SpaceShooter/Enemies/CrabShip.png",
   asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
+  // Debris atlas (6 irregular chunks). The Warden's Shield Nodes are cut from
+  // the 3rd chunk (31x31 at 210,19) — not an even-frame slice.
+  debris: "./assets/SpaceShooter/Enemies/Debris-Sheet.png",
   bullet: "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile04.png",
   enemyBullet:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
@@ -48,6 +52,8 @@ export type AssetAlias =
   | "miniboss"
   | "boss"
   | "mine"
+  | "warden"
+  | "shieldNode"
   | "asteroidLarge"
   | "asteroidMedium"
   | "asteroidSmall"
@@ -115,6 +121,15 @@ export async function loadAssets(): Promise<void> {
   textures.set("miniboss", Assets.get("miniboss"));
   textures.set("boss", Assets.get("boss"));
   textures.set("mine", Assets.get("mine"));
+  textures.set("warden", Assets.get("warden"));
+  // Shield Node: one irregular chunk cut from the Debris atlas (31x31 at 210,19).
+  textures.set(
+    "shieldNode",
+    new Texture({
+      source: (Assets.get("debris") as Texture).source,
+      frame: new Rectangle(210, 19, 31, 31),
+    }),
+  );
   textures.set("bullet", Assets.get("bullet"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
   textures.set("starsA", Assets.get("starsA"));

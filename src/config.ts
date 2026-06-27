@@ -85,7 +85,10 @@ export const SWARMER = {
   radiusFactor: 0.7,
 } as const;
 
-/** Gunner enemy (insect-2): tougher, slower, fires aimed shots at the player. */
+/** Gunner enemy (insect-2): tougher, slower, fires aimed shots at the player.
+ *  From burstStartWave on, every Gunner fires a burst instead of a single shot:
+ *  burstCount shots burstInterval apart, all aimed once at burst start (one
+ *  dodgeable line), then the normal shootInterval cooldown before the next. */
 export const GUNNER = {
   scale: 2,
   hp: 70,
@@ -94,6 +97,12 @@ export const GUNNER = {
   bulletDamage: 12,
   shootInterval: 1.6,
   radiusFactor: 0.7,
+  /** First wave Gunners burst-fire (single aimed shot before it). */
+  burstStartWave: 15,
+  /** Shots per burst, and the gap between them (the burst's aim is locked at the
+   *  first shot, so the volley travels down one line the player sidesteps). */
+  burstCount: 3,
+  burstInterval: 0.12,
 } as const;
 
 /** Asteroid hazards. Each size drifts down, deals contact damage, and splits
@@ -238,6 +247,51 @@ export const MINE = {
   radiusFactor: 0.7,
 } as const;
 
+/** Warden (CrabShip): a slow late-game enemy that descends straight, fires a
+ *  single aimed shot, makes one slow lateral dodge at mid-field, and is ringed by
+ *  an orbiting Shield of destructible Nodes. The player fires straight up, so a
+ *  Node covering the bottom blocks shots and a rotating gap lets them through;
+ *  Nodes can also be destroyed to widen the gap permanently. See ADR-0012. */
+export const WARDEN = {
+  scale: 2,
+  hp: 80,
+  contactDamage: 25,
+  /** Descent speed (ramps via WAVES speed steps). */
+  speed: 55,
+  bulletDamage: 12,
+  shootInterval: 1.6,
+  radiusFactor: 0.7,
+  /** First wave Wardens appear in the spawn budget. */
+  startWave: 15,
+  /** Per-pick share of the budget from startWave on (a flat share off the top,
+   *  like the Mine). Deliberately low — Wardens are slow, tanky, and linger. */
+  spawnChance: 0.08,
+  // --- One slow lateral dodge, triggered once at mid-field for flair. ---
+  /** Fraction of field height at which the single dodge triggers. */
+  dodgeAtYFactor: 0.5,
+  /** Lateral dodge speed (virtual px/s) and how long the nudge lasts. */
+  dodgeSpeed: 120,
+  dodgeDuration: 0.8,
+  /** Don't dodge toward an edge within this margin (bias away, like the Boss). */
+  dodgeEdgeMargin: 360,
+  // --- Shield: a ring of orbiting, destructible Nodes (ADR-0012). ---
+  /** Live Nodes at spawn. A knob, but ships at 3; more shrinks the timing window
+   *  below what's fair. Must not exceed SHIELD_NODE_CAPACITY in EnemyPool. */
+  nodeCount: 3,
+  /** Per-Node HP (scales with the wave hpMult, like body HP). */
+  nodeHp: 30,
+  /** Distance (virtual px) from the body centre to each orbiting Node. */
+  orbitRadius: 80,
+  /** Node sprite scale and its collision radius as a fraction of half-width. */
+  nodeScale: 2,
+  nodeRadiusFactor: 0.6,
+  /** Orbit angular speed (rad/s). NOT scaled by speedMult, so the gap-timing
+   *  window stays readable across waves (~one revolution every ~4.5 s). */
+  rotationSpeed: 1.4,
+  /** Cosmetic per-Node self-spin (rad/s, random direction). */
+  nodeSpin: 1.5,
+} as const;
+
 /** Enemy HP Bar: a thin flat-red bar that appears above an enemy once it has
  *  taken damage (hp < maxHp) and tracks remaining HP as a fill length — no
  *  number. Width tracks the enemy's unrotated sprite width; height and the gap
@@ -329,6 +383,7 @@ export const XP = {
   miniboss: 30,
   boss: 60,
   mine: 4,
+  warden: 14,
   /** XP granted by collecting a Star. */
   star: 12,
   /** First level-up needs this much XP (front-loaded so the first few come
@@ -352,6 +407,7 @@ export const SCORE = {
   miniboss: 250,
   boss: 600,
   mine: 25,
+  warden: 100,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,
 } as const;
