@@ -1,4 +1,5 @@
 import { Text } from "pixi.js";
+import { FONT_FAMILY } from "../config";
 
 /**
  * A minimal text button. Returns a Text (a Container) with anchor centered, so
@@ -7,7 +8,7 @@ import { Text } from "pixi.js";
 export function makeButton(label: string, onClick: () => void): Text {
   const text = new Text({
     text: label,
-    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Arial" },
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: FONT_FAMILY },
   });
   text.anchor.set(0.5);
   text.eventMode = "static";

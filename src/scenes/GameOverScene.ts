@@ -1,5 +1,5 @@
 import { Container, Text } from "pixi.js";
-import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
 import { makeButton } from "../ui/Button";
@@ -25,7 +25,7 @@ export class GameOverScene implements Scene {
         fill: 0xff5555,
         fontSize: 88,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     title.anchor.set(0.5);
@@ -64,7 +64,7 @@ export class GameOverScene implements Scene {
       const y = startY + i * lineH;
       const key = new Text({
         text: k,
-        style: { fill: 0xaab2c2, fontSize: 34, fontFamily: "Arial" },
+        style: { fill: 0xaab2c2, fontSize: 34, fontFamily: FONT_FAMILY },
       });
       key.anchor.set(1, 0.5);
       key.position.set(VIRTUAL_WIDTH / 2 - 30, y);
@@ -75,7 +75,7 @@ export class GameOverScene implements Scene {
           fill: isBest ? 0xffd24a : 0xffffff,
           fontSize: 34,
           fontWeight: "bold",
-          fontFamily: "Arial",
+          fontFamily: FONT_FAMILY,
         },
       });
       val.anchor.set(0, 0.5);
@@ -86,7 +86,7 @@ export class GameOverScene implements Scene {
 
     const bests = new Text({
       text: `Best score ${stats.bestScore.toLocaleString()}   ·   Best wave ${stats.bestWave}   ·   Runs ${stats.runsPlayed}`,
-      style: { fill: 0x8f97a8, fontSize: 26, fontFamily: "Arial" },
+      style: { fill: 0x8f97a8, fontSize: 26, fontFamily: FONT_FAMILY },
     });
     bests.anchor.set(0.5);
     bests.position.set(VIRTUAL_WIDTH / 2, startY + rows.length * lineH + 30);

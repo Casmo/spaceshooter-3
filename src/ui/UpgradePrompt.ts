@@ -3,6 +3,7 @@ import {
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
   RARITY_COLORS,
+  FONT_FAMILY,
   type Rarity,
 } from "../config";
 import { getTexture } from "../assets";
@@ -57,7 +58,7 @@ export class UpgradePrompt {
         fill: 0xffffff,
         fontSize: 52,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     title.anchor.set(0.5);
@@ -123,7 +124,7 @@ export class UpgradePrompt {
         fill: color,
         fontSize: 26,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     rarity.anchor.set(0.5);
@@ -136,7 +137,7 @@ export class UpgradePrompt {
         fill: 0xffffff,
         fontSize: 40,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     name.anchor.set(0.5);
@@ -145,7 +146,7 @@ export class UpgradePrompt {
 
     const level = new Text({
       text: `Level ${nextLevel}`,
-      style: { fill: 0xcfcfe0, fontSize: 30, fontFamily: "Arial" },
+      style: { fill: 0xcfcfe0, fontSize: 30, fontFamily: FONT_FAMILY },
     });
     level.anchor.set(0.5);
     level.position.set(CARD_W / 2, 190);
@@ -156,7 +157,7 @@ export class UpgradePrompt {
       style: {
         fill: 0xe6e6f0,
         fontSize: 28,
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
         align: "center",
         wordWrap: true,
         wordWrapWidth: CARD_W - 60,

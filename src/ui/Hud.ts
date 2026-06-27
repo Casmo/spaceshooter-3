@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { getTexture } from "../assets";
 
 /** Live values the HUD renders each frame. */
@@ -127,7 +127,7 @@ function label(color: number, size: number, weight?: "bold"): Text {
     style: {
       fill: color,
       fontSize: size,
-      fontFamily: "Arial",
+      fontFamily: FONT_FAMILY,
       fontWeight: weight ?? "normal",
     },
   });

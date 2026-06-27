@@ -92,9 +92,18 @@ function sliceFrames(
 
 /** Load every manifest asset, then derive frames and named textures. */
 export async function loadAssets(): Promise<void> {
-  await Assets.load(
-    Object.entries(MANIFEST).map(([alias, src]) => ({ alias, src })),
-  );
+  // Textures plus the UI font, in one batch so a failure of either is fatal
+  // alike. The font is registered under the family "Asimovian" (referenced via
+  // FONT_FAMILY in config); it is NOT a Texture, so it stays out of MANIFEST and
+  // the nearest-neighbour scaleMode loop below.
+  await Assets.load([
+    ...Object.entries(MANIFEST).map(([alias, src]) => ({ alias, src })),
+    {
+      alias: "font-asimovian",
+      src: "./assets/Fonts/Asimovian-Regular.ttf",
+      data: { family: "Asimovian" },
+    },
+  ]);
 
   // Pixel art: sample everything nearest-neighbour so it stays crisp. Frames
   // share their sheet's source, so setting it on the base covers them too.

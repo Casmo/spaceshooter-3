@@ -8,6 +8,12 @@
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
 
+/** The font family for all on-screen text. Asimovian (a smooth sci-fi display
+ *  face) is loaded in loadAssets() and registered under the family "Asimovian";
+ *  the chain falls back per-glyph and whole-font if it's ever unavailable. A
+ *  future body-font pairing would split this into display/body constants. */
+export const FONT_FAMILY = "Asimovian, Arial, sans-serif";
+
 /** Parallax background scroll speeds (virtual px/second, top -> bottom). The
  *  layers are split out of the Space_xx sheets: a slow far nebula and a faster
  *  star layer, all over a solid black base. */

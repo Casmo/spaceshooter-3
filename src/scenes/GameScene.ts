@@ -9,6 +9,7 @@ import {
   MODIFIER_FX,
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
+  FONT_FAMILY,
 } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
@@ -176,7 +177,7 @@ export class GameScene implements Scene {
         fill: 0xffffff,
         fontSize: 72,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     this.banner.anchor.set(0.5);

@@ -1,5 +1,5 @@
 import { Container, Text } from "pixi.js";
-import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
 import { makeButton } from "../ui/Button";
@@ -33,7 +33,7 @@ export class CreditsScene implements Scene {
             fill: size >= 60 ? 0xffffff : 0xcfd6e6,
             fontSize: size,
             fontWeight: size >= 60 ? "bold" : "normal",
-            fontFamily: "Arial",
+            fontFamily: FONT_FAMILY,
           },
         });
         line.anchor.set(0.5);

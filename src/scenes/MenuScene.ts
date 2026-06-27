@@ -1,5 +1,5 @@
 import { Container, Text } from "pixi.js";
-import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
 import { playMusic, stopMusic } from "../game/audio";
@@ -21,7 +21,7 @@ export class MenuScene implements Scene {
         fill: 0xffffff,
         fontSize: 96,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     title.anchor.set(0.5);

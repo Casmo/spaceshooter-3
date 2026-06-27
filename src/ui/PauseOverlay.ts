@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from "pixi.js";
-import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT } from "../config";
+import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { makeButton } from "./Button";
 
 /** Callbacks for the three pause-menu actions. */
@@ -26,7 +26,7 @@ export class PauseOverlay {
         fill: 0xffffff,
         fontSize: 84,
         fontWeight: "bold",
-        fontFamily: "Arial",
+        fontFamily: FONT_FAMILY,
       },
     });
     title.anchor.set(0.5);
@@ -46,7 +46,7 @@ export class PauseOverlay {
 
     const hint = new Text({
       text: "Click Resume to recapture the mouse",
-      style: { fill: 0x9aa0a6, fontSize: 26, fontFamily: "Arial" },
+      style: { fill: 0x9aa0a6, fontSize: 26, fontFamily: FONT_FAMILY },
     });
     hint.anchor.set(0.5);
     hint.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 280);
