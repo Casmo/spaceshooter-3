@@ -89,7 +89,7 @@ The single high-HP enemy that caps Waves on the every-5-but-not-10 cadence (5, 1
 _Avoid_: boss (the Boss is its own, larger thing — see below).
 
 **Boss**:
-The marquee high-HP enemy that caps every 10th Wave (10, 20, 30…), replacing the Mini-boss on those Waves. Larger, tougher, and with a more elaborate attack pattern than a Mini-boss: it settles near the top of the field, drifts slowly, and periodically Dashes sideways while firing a Curtain. The wave-10 Boss is the first; later milestones add or swap which Boss appears (and may add escorts). Guarantees a Star drop on death. No on-screen health bar in v1.
+The marquee high-HP enemy that caps every 10th Wave (10, 20, 30…), replacing the Mini-boss on those Waves. Larger, tougher, and with a more elaborate attack pattern than a Mini-boss: it settles near the top of the field, drifts slowly, and periodically Dashes sideways while firing a Curtain. The wave-10 Boss is the first; later milestones add or swap which Boss appears (and may add escorts). Guarantees a Star drop on death.
 _Avoid_: Mini-boss (a Boss is the every-10th capstone, not the every-5th).
 
 **Dash**:
@@ -122,3 +122,7 @@ _Avoid_: gem, orb, XP drop.
 **Hit Spark**:
 A small, untinted, decorative burst played at every player-bullet→enemy contact — including pierce, multishot, and Bounce-bullet hits, and whether or not the hit kills. Purely cosmetic; deals no damage and carries no Modifier meaning. Fixed native size, plays once. Distinct from the Explosive Modifier's larger damaging burst, which stacks on top of it on Explosive hits. (`Explosion01-Sheet`)
 _Avoid_: explosion, blast (reserve those for the Explosive Modifier's burst).
+
+**HP Bar**:
+A thin flat-red bar that appears above an enemy the instant it takes its first damage and tracks its remaining HP as a fill length — no number, the length *is* the percentage. Hidden while the enemy is at full HP (so a one-shot kill never shows one); once shown it never fades or hides until the enemy dies or flees. Its width matches the enemy's (unrotated) sprite width with a fixed thin height, and it stays horizontal above a spinning Asteroid or Mine. Applies to *every* enemy kind, the Boss included. Distinct from the player's HUD HP bar.
+_Avoid_: health bar, lifebar, the player's HP bar (that's the HUD).

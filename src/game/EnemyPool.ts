@@ -1,7 +1,8 @@
-import { Container, Sprite } from "pixi.js";
+import { Container, Sprite, Graphics } from "pixi.js";
 import {
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
+  ENEMY_HP_BAR,
   SWARMER,
   GUNNER,
   ASTEROID,
@@ -49,6 +50,13 @@ function randRange(min: number, max: number): number {
 /** A pooled enemy. Behavior is selected by `kind`, configured at spawn. */
 export class Enemy {
   readonly sprite: Sprite;
+  /**
+   * The HP Bar: a thin flat-red bar drawn above the sprite once damaged. It is a
+   * sibling of the sprite (not a child) so the asteroid/mine spin never rotates
+   * it. Geometry is drawn at the bar's local origin (centered on x); the bar is
+   * positioned each frame via its own x/y. Hidden while at full HP.
+   */
+  readonly bar = new Graphics();
   active = false;
   /**
    * Monotonic id, bumped on every spawn. Lets a Homing bullet tell "my target
@@ -57,6 +65,8 @@ export class Enemy {
   generation = 0;
   kind: EnemyKind = "swarmer";
   hp = 0;
+  /** HP at spawn; the HP Bar shows once hp drops below it. */
+  maxHp = 0;
   contactDamage = 0;
   radius = 0;
   /** XP awarded to the player when this enemy is destroyed. */
@@ -116,10 +126,17 @@ export class Enemy {
   private fireTimer = 0;
   private shotsRemaining = 0;
 
+  // HP Bar geometry, captured at spawn (unrotated, scale-aware) so a spinning
+  // sprite never wobbles the bar. lastBarFrac avoids redrawing an unchanged bar.
+  private barW = 0;
+  private barOffsetY = 0;
+  private lastBarFrac = -1;
+
   constructor() {
     this.sprite = new Sprite(getTexture("swarmer"));
     this.sprite.anchor.set(0.5);
     this.sprite.visible = false;
+    this.bar.visible = false;
   }
 
   get x(): number {
@@ -158,6 +175,11 @@ export class Enemy {
     this.bossVx = 0;
     this.fireTimer = 0;
     this.shotsRemaining = 0;
+    // Capture bar geometry while the sprite is unrotated and freshly scaled.
+    this.barW = this.sprite.width * ENEMY_HP_BAR.widthFactor;
+    this.barOffsetY = this.sprite.height / 2;
+    this.bar.visible = false;
+    this.lastBarFrac = -1;
   }
 
   spawnSwarmer(x: number, mods: WaveMods): void {
@@ -167,6 +189,7 @@ export class Enemy {
     this.xpValue = XP.swarmer;
     this.scoreValue = SCORE.swarmer;
     this.hp = SWARMER.hp * mods.hpMult;
+    this.maxHp = this.hp;
     this.contactDamage = SWARMER.contactDamage;
     this.speed = SWARMER.speed * mods.speedMult;
     this.baseX = x;
@@ -183,6 +206,7 @@ export class Enemy {
     this.xpValue = XP.gunner;
     this.scoreValue = SCORE.gunner;
     this.hp = GUNNER.hp * mods.hpMult;
+    this.maxHp = this.hp;
     this.contactDamage = GUNNER.contactDamage;
     this.speed = GUNNER.speed * mods.speedMult;
     this.canShoot = true;
@@ -216,6 +240,7 @@ export class Enemy {
           ? SCORE.asteroidMedium
           : SCORE.asteroidSmall;
     this.hp = c.hp * mods.hpMult;
+    this.maxHp = this.hp;
     this.contactDamage = c.contactDamage;
     this.speed = c.speed * mods.speedMult;
     this.driftVx = (Math.random() * 2 - 1) * 60;
@@ -237,6 +262,7 @@ export class Enemy {
     this.scoreValue = SCORE.miniboss;
     this.hp =
       MINIBOSS.hp * mods.hpMult * (1 + appearance * MINIBOSS.hpPerAppearance);
+    this.maxHp = this.hp;
     this.contactDamage = MINIBOSS.contactDamage;
     this.speed = MINIBOSS.speed;
     this.targetY = MINIBOSS.targetY;
@@ -265,6 +291,7 @@ export class Enemy {
     this.xpValue = XP.boss;
     this.scoreValue = SCORE.boss;
     this.hp = BOSS.hp * mods.hpMult * (1 + appearance * BOSS.hpPerAppearance);
+    this.maxHp = this.hp;
     this.contactDamage = BOSS.contactDamage;
     this.speed = BOSS.speed;
     this.targetY = BOSS.targetY;
@@ -288,6 +315,7 @@ export class Enemy {
     this.xpValue = XP.mine;
     this.scoreValue = SCORE.mine;
     this.hp = MINE.hp * mods.hpMult;
+    this.maxHp = this.hp;
     // Contact routes through detonation in the scene; this is parity only.
     this.contactDamage = MINE.explosionDamage;
     const steps = Math.floor(
@@ -355,6 +383,42 @@ export class Enemy {
         break;
     }
     if (this.canShoot) this.updateShooting(dt, ctx);
+    this.updateBar();
+  }
+
+  /**
+   * Position and (when the fraction changed) redraw the HP Bar. Hidden while at
+   * full HP, so an undamaged or one-shot enemy never shows one. Tracks the
+   * sprite's position each frame but uses the unrotated offset so the bar floats
+   * a fixed gap above the sprite's top edge without spinning.
+   */
+  private updateBar(): void {
+    if (this.hp >= this.maxHp) {
+      this.bar.visible = false;
+      return;
+    }
+    const frac = Math.max(0, this.hp / this.maxHp);
+    this.bar.visible = true;
+    this.bar.x = this.sprite.x;
+    this.bar.y =
+      this.sprite.y - this.barOffsetY - ENEMY_HP_BAR.gap - ENEMY_HP_BAR.height;
+    if (frac !== this.lastBarFrac) {
+      this.drawBar(frac);
+      this.lastBarFrac = frac;
+    }
+  }
+
+  /** Draw the bar geometry at the local origin, centered on x: a translucent
+   *  dark track with a flat-red fill scaled to `frac`. */
+  private drawBar(frac: number): void {
+    const w = this.barW;
+    const h = ENEMY_HP_BAR.height;
+    this.bar
+      .clear()
+      .rect(-w / 2, 0, w, h)
+      .fill({ color: ENEMY_HP_BAR.trackColor, alpha: ENEMY_HP_BAR.trackAlpha })
+      .rect(-w / 2, 0, w * frac, h)
+      .fill(ENEMY_HP_BAR.fillColor);
   }
 
   private updateMiniBoss(dt: number): void {
@@ -523,6 +587,7 @@ export class Enemy {
   kill(): void {
     this.active = false;
     this.sprite.visible = false;
+    this.bar.visible = false;
   }
 }
 
@@ -540,6 +605,7 @@ export class EnemyPool {
     const e = new Enemy();
     this.all.push(e);
     this.view.addChild(e.sprite);
+    this.view.addChild(e.bar);
     return e;
   }
 

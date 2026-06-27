@@ -239,6 +239,24 @@ export const MINE = {
   radiusFactor: 0.7,
 } as const;
 
+/** Enemy HP Bar: a thin flat-red bar that appears above an enemy once it has
+ *  taken damage (hp < maxHp) and tracks remaining HP as a fill length — no
+ *  number. Width tracks the enemy's unrotated sprite width; height and the gap
+ *  above the sprite are fixed (scale-independent). Applies to every enemy kind. */
+export const ENEMY_HP_BAR = {
+  /** Bar width as a fraction of the enemy's unrotated sprite width. */
+  widthFactor: 0.9,
+  /** Bar thickness (virtual px), fixed regardless of enemy scale. */
+  height: 6,
+  /** Gap (virtual px) between the bar's bottom and the sprite's top edge. */
+  gap: 10,
+  /** Translucent dark track behind the fill. */
+  trackColor: 0x000000,
+  trackAlpha: 0.45,
+  /** Flat red fill (matches the HUD's low-HP red). */
+  fillColor: 0xe05a4a,
+} as const;
+
 /** Enemy projectile (Projectile03 circle, tinted by damage tier). */
 export const ENEMY_BULLET = {
   scale: 1,
