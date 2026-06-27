@@ -1,7 +1,13 @@
-import { WAVES, MINE } from "../config";
+import { WAVES, MINE, BOSS } from "../config";
 import { EnemyPool, type WaveMods } from "./EnemyPool";
 
-type SpawnKind = "swarmer" | "gunner" | "asteroid" | "miniboss" | "mine";
+type SpawnKind =
+  | "swarmer"
+  | "gunner"
+  | "asteroid"
+  | "miniboss"
+  | "boss"
+  | "mine";
 
 /**
  * Drives discrete, escalating waves. Each wave spawns a budget of enemies over
@@ -18,6 +24,8 @@ export class WaveManager {
   private mods: WaveMods = { hpMult: 1, speedMult: 1, splitBonus: 0 };
   /** How many mini-bosses have appeared (for HP scaling). */
   private miniBossAppearances = 0;
+  /** How many bosses have appeared (for HP scaling). */
+  private bossAppearances = 0;
 
   /** @param onWaveCleared called with the wave number when a wave is cleared. */
   constructor(
@@ -83,6 +91,14 @@ export class WaveManager {
 
   private composeWave(n: number): SpawnKind[] {
     const queue: SpawnKind[] = [];
+    // Milestone capstones: a Boss caps every bossEvery wave (replacing the
+    // mini-boss there); a mini-boss caps the remaining every-miniBossEvery waves.
+    // This is the single place to change which capstone a milestone spawns.
+    if (n % WAVES.bossEvery === 0) {
+      queue.push("boss");
+      for (let i = 0; i < BOSS.escortCount; i++) queue.push("swarmer");
+      return queue;
+    }
     if (n % WAVES.miniBossEvery === 0) {
       queue.push("miniboss");
       for (let i = 0; i < WAVES.miniBossEscort; i++) queue.push("swarmer");
@@ -120,6 +136,9 @@ export class WaveManager {
         break;
       case "miniboss":
         this.enemies.spawnMiniBoss(this.mods, this.miniBossAppearances++);
+        break;
+      case "boss":
+        this.enemies.spawnBoss(this.mods, this.bossAppearances++);
         break;
       case "mine":
         this.enemies.spawnMine(this.mods, this.waveNumber);

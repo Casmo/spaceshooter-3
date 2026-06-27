@@ -20,6 +20,7 @@ const MANIFEST = {
   swarmer: "./assets/SpaceShooter/Enemies/fighter1.png",
   gunner: "./assets/SpaceShooter/Enemies/Gunship.png",
   miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
+  boss: "./assets/SpaceShooter/Enemies/fighter2.png",
   mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
   asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
   bullet: "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile04.png",
@@ -46,6 +47,7 @@ export type AssetAlias =
   | "swarmer"
   | "gunner"
   | "miniboss"
+  | "boss"
   | "mine"
   | "asteroidLarge"
   | "asteroidMedium"
@@ -104,6 +106,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("swarmer", Assets.get("swarmer"));
   textures.set("gunner", Assets.get("gunner"));
   textures.set("miniboss", Assets.get("miniboss"));
+  textures.set("boss", Assets.get("boss"));
   textures.set("mine", Assets.get("mine"));
   textures.set("bullet", Assets.get("bullet"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));

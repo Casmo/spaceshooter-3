@@ -163,6 +163,48 @@ export const MINIBOSS = {
   radiusFactor: 0.7,
 } as const;
 
+/** Boss: the every-10th-wave capstone (10, 20, 30…), replacing the Mini-boss on
+ *  those waves. Descends in, settles near the top, drifts slowly, and every few
+ *  seconds Dashes sideways (accelerated) while firing a downward Curtain. Tougher
+ *  and more elaborate than a Mini-boss. Tuning here is the seam for future bosses:
+ *  copy this block and tweak. (`fighter2`) */
+export const BOSS = {
+  scale: 6,
+  hp: 2000,
+  /** HP scaling per boss appearance (gets tougher each return). */
+  hpPerAppearance: 0.5,
+  contactDamage: 45,
+  /** Descent speed until it settles at targetY. */
+  speed: 110,
+  /** Y it settles at (high — it lives on the top of the field). */
+  targetY: 150,
+  /** Slow constant horizontal drift between dashes (virtual px/s). */
+  driftSpeed: 60,
+  /** Dash cadence: a dash triggers every [min,max] seconds (random). */
+  dashIntervalMin: 3,
+  dashIntervalMax: 5,
+  /** Dash kinematics: accelerate from drift up to dashSpeed over the lunge, hold
+   *  for dashDuration, then decay back to drift. */
+  dashSpeed: 900,
+  dashAccel: 4000,
+  dashDuration: 0.5,
+  /** Don't pick a dash direction toward an edge within this margin (virtual px). */
+  dashEdgeMargin: 360,
+  /** Curtain: a fixed burst of curtainShots, each two side-by-side straight-down
+   *  bullets, fired every curtainFireInterval. The burst is kicked off by a dash
+   *  and deliberately outlasts the dash movement (curtainShots * interval can
+   *  exceed dashDuration). The dash's lateral motion sweeps the lines across the
+   *  field (never aimed at the player). */
+  curtainShots: 5,
+  curtainFireInterval: 0.2,
+  /** Horizontal gap (virtual px) between the two bullet streams. */
+  curtainColumnGap: 120,
+  bulletDamage: 18,
+  /** Escorts spawned alongside the boss (0 for the wave-10 boss; future knob). */
+  escortCount: 0,
+  radiusFactor: 0.7,
+} as const;
+
 /** Mine: a flying explosive that enters from the top or a side, locks one aimed
  *  course at the player at spawn, flies it straight, and detonates when destroyed
  *  or on player contact (never when it escapes off-screen). Player-only AoE. */
@@ -232,10 +274,13 @@ export const WAVES = {
   /** +1 asteroid split every N waves (capped). */
   splitBonusEveryWaves: 4,
   maxAsteroidSplit: 4,
-  /** A mini-boss caps every Nth wave. */
+  /** A mini-boss caps every Nth wave (except boss waves — see bossEvery). */
   miniBossEvery: 5,
   /** Extra swarmers spawned alongside the mini-boss. */
   miniBossEscort: 3,
+  /** A Boss caps every Nth wave, replacing the mini-boss there. Must be a
+   *  multiple of miniBossEvery so the boss check cleanly overrides it. */
+  bossEvery: 10,
 } as const;
 
 /** Projectile pooling and the safety cap. */
@@ -259,6 +304,7 @@ export const XP = {
   asteroidMedium: 2,
   asteroidSmall: 1,
   miniboss: 30,
+  boss: 60,
   mine: 4,
   /** XP granted by collecting a Star. */
   star: 12,
@@ -281,6 +327,7 @@ export const SCORE = {
   asteroidMedium: 12,
   asteroidSmall: 5,
   miniboss: 250,
+  boss: 600,
   mine: 25,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,

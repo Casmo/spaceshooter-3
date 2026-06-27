@@ -85,8 +85,20 @@ The ~3-second enemy-free pause between Waves, announced by the "Wave N" banner. 
 _Avoid_: intermission, break.
 
 **Mini-boss**:
-The single high-HP enemy that caps every 5th Wave with a simple attack pattern. Guarantees a Star drop on death.
-_Avoid_: boss (no full bosses in v1).
+The single high-HP enemy that caps Waves on the every-5-but-not-10 cadence (5, 15, 25…) with a simple attack pattern. Guarantees a Star drop on death. Distinct from the Boss, which owns the every-10th Wave.
+_Avoid_: boss (the Boss is its own, larger thing — see below).
+
+**Boss**:
+The marquee high-HP enemy that caps every 10th Wave (10, 20, 30…), replacing the Mini-boss on those Waves. Larger, tougher, and with a more elaborate attack pattern than a Mini-boss: it settles near the top of the field, drifts slowly, and periodically Dashes sideways while firing a Curtain. The wave-10 Boss is the first; later milestones add or swap which Boss appears (and may add escorts). Guarantees a Star drop on death. No on-screen health bar in v1.
+_Avoid_: Mini-boss (a Boss is the every-10th capstone, not the every-5th).
+
+**Dash**:
+The Boss's signature move: a sudden accelerated sideways lunge (left or right, chosen at random but biased away from a near edge) that ramps up from the slow drift, then decays back. The Boss fires its Curtain *during* the Dash, so its lateral motion smears the shots into a sweeping wall — the core thing the player must read and dodge.
+_Avoid_: strafe (the Mini-boss strafes at constant speed; a Dash accelerates), charge.
+
+**Curtain**:
+The Boss's attack: two side-by-side vertical streams of straight-down bullets, fired as a fixed burst kicked off by a Dash (never aimed at the player — unlike the Mini-boss fan). The burst outlasts the Dash movement — the Boss keeps firing for a moment as it decays back to its drift. The Dash's lateral motion sweeps the two lines across the field. Dodged by reading the Dash and repositioning, not by out-running aimed fire.
+_Avoid_: fan (reserve "fan" for the Mini-boss's aimed spread), spread (that's a player Modifier).
 
 **Swarmer**:
 A small, fast, low-HP enemy that flies in formations/sine paths and deals contact damage only. (`fighter1`)

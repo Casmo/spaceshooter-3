@@ -520,6 +520,12 @@ export class GameScene implements Scene {
     for (const enemy of this.enemies.activeEnemies) {
       if (!enemy.active) continue;
       if (pointInRadius(enemy.x, enemy.y, enemy.radius, this.player)) {
+        // Ramming the Boss hurts the player but never destroys it — otherwise a
+        // suicide-ram would trivially one-shot the wave's marquee enemy.
+        if (enemy.kind === "boss") {
+          this.player.takeHit(enemy.contactDamage);
+          return;
+        }
         enemy.kill();
         // A Mine's detonation (in destroyEnemy) deals the player damage — the
         // player is at the blast centre — so don't also apply contact damage.
@@ -535,7 +541,7 @@ export class GameScene implements Scene {
     this.awardXp(enemy.xpValue);
     this.run.score += enemy.scoreValue;
     this.run.kills += 1;
-    const guaranteed = enemy.kind === "miniboss";
+    const guaranteed = enemy.kind === "miniboss" || enemy.kind === "boss";
     if (guaranteed || Math.random() < STAR.dropChance) {
       this.stars.spawn(enemy.x, enemy.y);
     }

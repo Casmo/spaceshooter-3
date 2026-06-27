@@ -6,6 +6,7 @@ import {
   GUNNER,
   ASTEROID,
   MINIBOSS,
+  BOSS,
   MINE,
   ENEMY_BULLET,
   WAVES,
@@ -15,7 +16,13 @@ import {
 } from "../config";
 import { getTexture, type AssetAlias } from "../assets";
 
-export type EnemyKind = "swarmer" | "gunner" | "asteroid" | "miniboss" | "mine";
+export type EnemyKind =
+  | "swarmer"
+  | "gunner"
+  | "asteroid"
+  | "miniboss"
+  | "boss"
+  | "mine";
 
 /** Per-frame context passed to enemies so they can shoot at the player. */
 export interface EnemyContext {
@@ -33,6 +40,11 @@ export interface WaveMods {
 }
 
 const NO_MODS: WaveMods = { hpMult: 1, speedMult: 1, splitBonus: 0 };
+
+/** Random float in [min, max). */
+function randRange(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
 
 /** A pooled enemy. Behavior is selected by `kind`, configured at spawn. */
 export class Enemy {
@@ -93,6 +105,17 @@ export class Enemy {
   private strafeSpeed = 0;
   private strafeDir = 1;
 
+  // Boss dash + curtain. Between dashes it drifts slowly (driftDir); a dash
+  // accelerates bossVx toward the dash velocity, then it decays back to drift.
+  private driftDir = 1;
+  private bossVx = 0;
+  private dashTimer = 0;
+  private dashing = false;
+  private dashTime = 0;
+  private dashDir = 1;
+  private fireTimer = 0;
+  private shotsRemaining = 0;
+
   constructor() {
     this.sprite = new Sprite(getTexture("swarmer"));
     this.sprite.anchor.set(0.5);
@@ -130,6 +153,11 @@ export class Enemy {
     this.fanCount = 1;
     this.fanSpreadDeg = 0;
     this.settled = false;
+    this.dashing = false;
+    this.dashTime = 0;
+    this.bossVx = 0;
+    this.fireTimer = 0;
+    this.shotsRemaining = 0;
   }
 
   spawnSwarmer(x: number, mods: WaveMods): void {
@@ -225,6 +253,29 @@ export class Enemy {
   }
 
   /**
+   * Spawn the Boss: descends from center-top to settle near the top, then drifts
+   * slowly and periodically Dashes sideways while firing a Curtain. HP scales per
+   * appearance (like the Mini-boss). Firing is driven inside updateBoss (tied to
+   * the dash), so canShoot stays false.
+   */
+  spawnBoss(mods: WaveMods, appearance: number): void {
+    this.reset("boss", BOSS.scale);
+    this.kind = "boss";
+    this.mods = mods;
+    this.xpValue = XP.boss;
+    this.scoreValue = SCORE.boss;
+    this.hp = BOSS.hp * mods.hpMult * (1 + appearance * BOSS.hpPerAppearance);
+    this.contactDamage = BOSS.contactDamage;
+    this.speed = BOSS.speed;
+    this.targetY = BOSS.targetY;
+    this.bulletDamage = BOSS.bulletDamage;
+    this.driftDir = Math.random() < 0.5 ? -1 : 1;
+    this.dashTimer = randRange(BOSS.dashIntervalMin, BOSS.dashIntervalMax);
+    this.radius = (this.sprite.width / 2) * BOSS.radiusFactor;
+    this.sprite.position.set(VIRTUAL_WIDTH / 2, -this.sprite.height / 2);
+  }
+
+  /**
    * Spawn a Mine at a pre-chosen off-screen point (x, y). Its aimed velocity is
    * locked on the first update(), toward the player's position that frame. Speed
    * ramps by wave to a hard cap and deliberately ignores the wave speedMult so
@@ -286,6 +337,9 @@ export class Enemy {
       case "miniboss":
         this.updateMiniBoss(dt);
         break;
+      case "boss":
+        this.updateBoss(dt, ctx);
+        break;
       case "mine":
         if (!this.aimed) {
           const dx = ctx.playerX - this.sprite.x;
@@ -318,6 +372,102 @@ export class Enemy {
       this.sprite.x = VIRTUAL_WIDTH - margin;
       this.strafeDir = -1;
     }
+  }
+
+  /**
+   * Boss: descend to settle, then drift slowly and Dash sideways every few
+   * seconds. A dash accelerates bossVx toward the dash velocity (decaying back to
+   * the slow drift afterwards) and fires the Curtain — two downward fan volleys —
+   * during the lunge, so the lateral motion smears the shots into a sweep.
+   */
+  private updateBoss(dt: number, ctx: EnemyContext): void {
+    if (!this.settled) {
+      this.sprite.y += this.speed * dt;
+      if (this.sprite.y >= this.targetY) {
+        this.sprite.y = this.targetY;
+        this.settled = true;
+      }
+      return;
+    }
+
+    // Trigger a dash on the timer (only when not already dashing).
+    if (!this.dashing) {
+      this.dashTimer -= dt;
+      if (this.dashTimer <= 0) this.startDash();
+    }
+
+    // Horizontal velocity eases toward the dash target (during a dash) or the
+    // slow drift (otherwise); the same accel ramps up and decays back.
+    const target = this.dashing
+      ? this.dashDir * BOSS.dashSpeed
+      : this.driftDir * BOSS.driftSpeed;
+    const dv = target - this.bossVx;
+    const step = BOSS.dashAccel * dt;
+    this.bossVx += Math.max(-step, Math.min(step, dv));
+    this.sprite.x += this.bossVx * dt;
+
+    // Keep on-screen: drift bounces off the edges; a dash that reaches one ends.
+    const margin = this.sprite.width / 2;
+    if (this.sprite.x < margin) {
+      this.sprite.x = margin;
+      this.driftDir = 1;
+      if (this.dashing) this.endDash();
+    } else if (this.sprite.x > VIRTUAL_WIDTH - margin) {
+      this.sprite.x = VIRTUAL_WIDTH - margin;
+      this.driftDir = -1;
+      if (this.dashing) this.endDash();
+    }
+
+    // Dash movement lasts dashDuration, then decays back to the slow drift.
+    if (this.dashing) {
+      this.dashTime += dt;
+      if (this.dashTime >= BOSS.dashDuration) this.endDash();
+    }
+
+    // Curtain: a fixed burst of curtainShots kicked off by the dash. It runs on
+    // its own timer and deliberately outlasts the dash movement — the boss keeps
+    // firing for a moment as it decays back to drift. fireTimer starts at 0 so
+    // the first shot lands on the dash's first frame.
+    if (this.shotsRemaining > 0) {
+      this.fireTimer -= dt;
+      if (this.fireTimer <= 0) {
+        this.fireCurtain(ctx);
+        this.shotsRemaining--;
+        this.fireTimer = BOSS.curtainFireInterval;
+      }
+    }
+  }
+
+  /** Begin a dash: pick a direction (random, biased away from a near edge). */
+  private startDash(): void {
+    const margin = BOSS.dashEdgeMargin;
+    if (this.sprite.x < margin) {
+      this.dashDir = 1;
+    } else if (this.sprite.x > VIRTUAL_WIDTH - margin) {
+      this.dashDir = -1;
+    } else {
+      this.dashDir = Math.random() < 0.5 ? -1 : 1;
+    }
+    this.dashing = true;
+    this.dashTime = 0;
+    this.fireTimer = 0;
+    this.shotsRemaining = BOSS.curtainShots;
+    // The dash sets the drift heading for afterwards (decays out in this dir).
+    this.driftDir = this.dashDir;
+  }
+
+  private endDash(): void {
+    this.dashing = false;
+    this.dashTimer = randRange(BOSS.dashIntervalMin, BOSS.dashIntervalMax);
+  }
+
+  /** One Curtain shot: two straight-down bullets side by side (the two vertical
+   *  streams). The dash's lateral motion sweeps them across the field. */
+  private fireCurtain(ctx: EnemyContext): void {
+    const speed = ENEMY_BULLET.speed;
+    const half = BOSS.curtainColumnGap / 2;
+    ctx.fire(this.x - half, this.y, 0, speed, this.bulletDamage);
+    ctx.fire(this.x + half, this.y, 0, speed, this.bulletDamage);
   }
 
   private updateShooting(dt: number, ctx: EnemyContext): void {
@@ -418,6 +568,12 @@ export class EnemyPool {
   spawnMiniBoss(mods: WaveMods, appearance: number): void {
     const e = this.obtain();
     e.spawnMiniBoss(mods, appearance);
+    this.live.push(e);
+  }
+
+  spawnBoss(mods: WaveMods, appearance: number): void {
+    const e = this.obtain();
+    e.spawnBoss(mods, appearance);
     this.live.push(e);
   }
 
