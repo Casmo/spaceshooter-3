@@ -1,3 +1,5 @@
 # Single evolving weapon with orthogonal stacking modifiers
 
+> **Amended by ADR-0010:** the Spread modifier was removed; the roster is now six modifiers (Multishot, Pierce, Homing, Explosive, Burn, Bounce). The architecture below is unchanged.
+
 The combat depth comes from **one weapon** whose behavior is layered by stackable bullet Modifiers (Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce), not from collecting multiple distinct weapons. We chose this over a Vampire-Survivors-style multi-weapon model because orthogonal modifiers produce the most emergent combinations from the fewest moving parts, and combos read as *synergy* rather than just *more stuff on screen*. Each modifier is an independent axis, so even ~7 of them yield dozens of distinct feels (e.g. Spread + Homing + Burn). Visual variety is achieved by swapping the projectile sprite by a modifier priority and layering per-modifier trail effects — not by adding real weapons. Deliberately scoped this way to avoid overscoping v1.

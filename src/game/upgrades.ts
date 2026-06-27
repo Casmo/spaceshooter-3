@@ -102,17 +102,6 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     },
   },
   {
-    id: "spread",
-    name: "Spread",
-    description: "Fan your shots out wider",
-    rarity: MODIFIER_UPGRADES.spread.rarity,
-    cap: MODIFIER_UPGRADES.spread.cap,
-    weight: MODIFIER_UPGRADES.spread.weight,
-    apply: (p) => {
-      p.modifiers.spread += 1;
-    },
-  },
-  {
     id: "pierce",
     name: "Piercing",
     description: "Bullets pass through +1 enemy",

@@ -206,10 +206,9 @@ export class Player {
     // Bounce level is the generations a shot can chain (see ADR-0005).
     const bounceRemaining = m.bounce;
 
-    // Arc widens with Spread; even without it, multiple shots get a small gap.
-    const spreadArc = m.spread * MODIFIERS.spreadDegPerLevel;
-    const minArc = count > 1 ? MODIFIERS.multishotMinGapDeg * (count - 1) : 0;
-    const arcRad = (Math.max(spreadArc, minArc) * Math.PI) / 180;
+    // Multishot fans its volley out by a fixed gap per extra projectile.
+    const arcDeg = count > 1 ? MODIFIERS.multishotMinGapDeg * (count - 1) : 0;
+    const arcRad = (arcDeg * Math.PI) / 180;
 
     const originX = this.sprite.x;
     const originY = this.sprite.y - this.halfHeight;

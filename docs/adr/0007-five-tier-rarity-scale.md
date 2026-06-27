@@ -1,5 +1,7 @@
 # Upgrade rarity is a five-tier cosmetic scale, not six
 
+> **Amended by ADR-0009:** rarity is no longer cosmetic — each tier now maps to a fixed draw weight (12/8/4/2/1). The five-tier scale and colors described here still stand; only the "draw frequency is governed entirely by weight, not tier" claim is superseded.
+
 Upgrade rarity is now a fixed ladder of five tiers, low to high: **common (gray), uncommon (green), rare (blue), epic (purple), legendary (orange).** The previous scheme had six tiers and an extra `veryRare` sitting between rare and epic. We collapsed that to five to match the convention most players already carry from other loot games (gray → green → blue → purple → orange), where the in-between "very rare" tier simply does not exist.
 
 `veryRare` was dropped and everything on it was promoted into **epic**. In practice that was a single upgrade — **Extra Life** — which now shares the epic tier with **Homing**. Rarity itself is purely cosmetic: draw frequency is governed entirely by each upgrade type's own `weight` (see `pickWeighted` in `upgrades.ts`), not by its tier. But because the promotion put Extra Life in the same tier as Homing, we also bumped its `weight` from 1 to **3 to match Homing**, so the two epic upgrades draw at a consistent rate rather than Extra Life staying the single rarest card in the pool. That is the one balance change bundled with this rename; broader weight rebalancing remains out of scope and deferred to a future balance pass.

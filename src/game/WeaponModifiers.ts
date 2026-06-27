@@ -1,7 +1,6 @@
-/** The seven bullet modifiers. They stack orthogonally on the single weapon. */
+/** The six bullet modifiers. They stack orthogonally on the single weapon. */
 export type ModifierId =
   | "multishot"
-  | "spread"
   | "pierce"
   | "homing"
   | "explosive"
@@ -14,7 +13,6 @@ export type WeaponModifiers = Record<ModifierId, number>;
 export function createModifiers(): WeaponModifiers {
   return {
     multishot: 0,
-    spread: 0,
     pierce: 0,
     homing: 0,
     explosive: 0,

@@ -23,36 +23,40 @@ A vertical-scrolling roguelike shmup in PixiJS v8 + TypeScript + Vite. Glossary 
 ## 4. Weapon & bullet modifiers
 One weapon (ADR-0001). Base stats in `config.ts`. **Shooting Power = damage per shot.** **Fire Rate = cooldown.**
 
-Seven orthogonal, stacking **Modifiers** (cap 10 each):
+Six orthogonal, stacking **Modifiers** (Spread was removed — ADR-0010):
 
 | Modifier | Effect |
 |---|---|
-| Multishot | +1 projectile per level |
-| Spread | fan shots out by an angle |
+| Multishot | +1 projectile per level; the volley auto-fans by a fixed per-bullet gap |
 | Pierce | bullets pass through N enemies |
 | Homing | bullets curve toward nearest enemy |
 | Explosive | small AoE on impact (`fire.png`) |
 | Burn | damage-over-time on hit |
 | Bounce | on any hit (incl. pierce hits) spawn **1 Bounce-bullet** in a random direction: a **full clone** of the parent — full damage, unlimited range, all other Modifiers inherited — but **pierce stripped**. Level = **generational depth** (parent passes `level−1` down); chains until depth 0. Cannot hit the enemy just struck (Homing also skips it). Legendary, cap 3. See ADR-0005. |
 
-**Projectile visuals (player):** styled by modifiers, NOT by damage. Base sprite chosen by priority — `Explosive/Homing → rocket` › `Pierce → laser-1/2/3` › `Burn → fire` › `Multishot/Spread → plasm` › none → `bullet`. Per-modifier trail/tint effects layer on top (Burn=orange flame, Homing=cyan, Explosive=red, Pierce=blue). Rocket is the headline look when several are active *(known tradeoff: rocket-look + pierce can mislead; revisit later)*.
+**Projectile visuals (player):** styled by modifiers, NOT by damage. Base sprite chosen by priority — `Explosive/Homing → rocket` › `Pierce → laser-1/2/3` › `Burn → fire` › `Multishot → plasm` › none → `bullet`. Per-modifier trail/tint effects layer on top (Burn=orange flame, Homing=cyan, Explosive=red, Pierce=blue). Rocket is the headline look when several are active *(known tradeoff: rocket-look + pierce can mislead; revisit later)*.
 
-## 5. Upgrades (13 types)
-Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pauses. `0` cap = unlimited. ≥3 unlimited types guarantee the draw never runs dry (no filler needed).
+## 5. Upgrades (12 types)
+Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pauses. `0` cap = unlimited. ≥3 unlimited types guarantee the draw never runs dry (Damage / Fire Rate / HP).
 
-| Upgrade | Cap | Rarity (color) | Notes |
+**Rarity tier *is* the draw weight** (ADR-0009): common 12 / uncommon 8 / rare 4 / epic 2 / legendary 1. Rarity is no longer cosmetic. Intra-tier exceptions are expressed via `cap`, not weight.
+
+| Upgrade | Cap | Rarity (weight) | Notes |
 |---|---|---|---|
-| Damage | ∞ | common (gray) | number up |
-| Engine | 10 | common (gray) | mouse sensitivity + follow responsiveness |
-| Fire Rate | ∞ | common (gray) | **diminishing**: `cooldown *= ~0.99`/lvl, asymptotic, never 0 |
-| Spread, Pierce, Explosive, Burn | 10 | uncommon (green) | 4 of the 7 modifiers |
-| Homing | 10 | epic (purple) | curve toward locked enemy |
-| Multishot | 10 | legendary (orange) | +1 projectile per level |
-| Bounce | 3 | legendary (orange) | spawns full clone bullets that chain (ADR-0005) |
-| HP | ∞ | rare (blue) | max HP up |
-| Extra Life | ∞ | epic (purple) | +1 life |
+| Damage | ∞ | common (12) | +6 damage per level |
+| Engine | 10 | common (12) | mouse sensitivity + follow responsiveness |
+| Fire Rate | ∞ | common (12) | **diminishing**: `cooldown *= 0.95`/lvl, asymptotic, never 0 |
+| Tractor Beam | 5 | common (12) | larger star pickup range (maxes usefulness by lvl 5) |
+| Pierce | 5 | uncommon (8) | bullets pass through +1 enemy/lvl |
+| Burn | 10 | uncommon (8) | damage-over-time on hit |
+| HP | ∞ | rare (4) | +25 max HP per level |
+| Explosive | 10 | rare (4) | AoE cleave on impact; scales with Damage |
+| Extra Life | 3 | epic (2) | +1 life (capped so a run can't trend to immortality) |
+| Homing | 3 | epic (2) | curve toward locked enemy; turn rate 4/8/12 (no dead levels) |
+| Multishot | 10 | legendary (1) | +1 projectile per level |
+| Bounce | 3 | legendary (1) | spawns full clone bullets that chain (ADR-0005) |
 
-Per-upgrade `cap`, `weight`, and effect curve all configurable.
+Per-upgrade `cap` and effect curve remain configurable; `weight` is derived from the rarity tier.
 
 ## 6. XP & leveling
 - XP auto-granted per kill, scaled by enemy type (small → least, elite → most).

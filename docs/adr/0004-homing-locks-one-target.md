@@ -1,5 +1,7 @@
 # Homing locks one target instead of chasing the nearest enemy
 
+> **Amended by ADR-0010:** the "Multishot/Spread" dogpile example below predates Spread's removal; the dogpile now applies to Multishot (and Bounce) alone. The lock-on behavior is unchanged.
+
 A Homing bullet acquires a **Lock** on a single enemy the moment it is born — the closest enemy present at that instant — and steers toward only that enemy for the rest of its life. It never re-evaluates which enemy is closest. When the Locked enemy is gone (destroyed, or fled off the bottom of the field), the bullet stops steering and keeps flying in its current direction (its last-known heading).
 
 We chose this over the original behavior, which re-picked the nearest enemy *every frame*. Continuous nearest-retargeting made bullets snap erratically between enemies in a crowd and felt like an aimbot rather than a fired shot; it also meant a bullet could never "miss," which flattened the skill of positioning. Lock-on reads as a committed shot — you can watch it curve toward its mark and watch it sail off when the mark dies. The cost is intentional: with Multishot/Spread, every bullet in a volley independently Locks the same closest enemy and dogpiles it. We accept the dogpile rather than build cross-bullet target-spreading, which is a much larger feature and a different design.

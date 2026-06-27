@@ -364,55 +364,60 @@ export const RARITY_COLORS: Record<Rarity, number> = {
   legendary: 0xff9933, // orange
 };
 
-/** The non-modifier upgrade pool (bullet modifiers are added in #6).
- *  cap: 0 = unlimited. At least 3 unlimited types keep the 3-card draw full. */
+/** The non-modifier upgrade pool. Tier = draw weight (ADR-0009): common 12 /
+ *  uncommon 8 / rare 4 / epic 2 / legendary 1. cap: 0 = unlimited; at least 3
+ *  unlimited types keep the 3-card draw full (Damage/Rapid Fire/Reinforced Hull). */
 export const UPGRADES = {
-  damage: { cap: 0, weight: 10, rarity: "common", amount: 6 },
+  damage: { cap: 0, weight: 12, rarity: "common", amount: 6 },
   moveSpeed: {
     cap: 10,
-    weight: 10,
+    weight: 12,
     rarity: "common",
     sensitivityAmount: 0.1,
     responseAmount: 1,
   },
-  fireRate: { cap: 0, weight: 10, rarity: "common", mult: 0.95 },
-  maxHp: { cap: 0, weight: 3, rarity: "rare", amount: 25 },
-  extraLife: { cap: 0, weight: 3, rarity: "epic" },
-  pickupRange: { cap: 10, weight: 6, rarity: "uncommon", amount: 120 },
+  fireRate: { cap: 0, weight: 12, rarity: "common", mult: 0.95 },
+  maxHp: { cap: 0, weight: 4, rarity: "rare", amount: 25 },
+  // Capped at 3 so a long run can't trend toward immortality (starts at 3 lives).
+  extraLife: { cap: 3, weight: 2, rarity: "epic" },
+  pickupRange: { cap: 5, weight: 12, rarity: "common", amount: 120 },
 } as const;
 
 /** Bullet-modifier mechanics. All modifiers stack orthogonally on the one gun. */
 export const MODIFIERS = {
   /** +N projectiles per Multishot level. */
   multishotPerLevel: 1,
-  /** Arc (degrees) added per Spread level. */
-  spreadDegPerLevel: 12,
-  /** Minimum gap (degrees) between adjacent multishot projectiles so they don't
-   *  perfectly overlap even with no Spread. */
+  /** Minimum gap (degrees) between adjacent multishot projectiles so a volley
+   *  fans out instead of perfectly overlapping (the built-in Multishot fan). */
   multishotMinGapDeg: 8,
   /** +N enemies pierced per Pierce level. */
   piercePerLevel: 1,
 } as const;
 
-/** The 7 bullet modifiers as upgrade cards (all uncommon/green, cap 10).
- *  Multishot/Spread/Pierce ship in #6a; the rest are wired in #6b. */
+/** The 6 bullet modifiers as upgrade cards. Tier = draw weight (ADR-0009):
+ *  common 12 / uncommon 8 / rare 4 / epic 2 / legendary 1. Intra-tier
+ *  exceptions are expressed via `cap`, not weight. Spread was removed (ADR-0010). */
 export const MODIFIER_UPGRADES = {
-  // Multishot and Homing are very strong, so they're rare top-tier drops.
+  // Multishot multiplies the whole volley — the rarest top-tier drop.
   multishot: { cap: 10, weight: 1, rarity: "legendary" },
-  spread: { cap: 10, weight: 8, rarity: "uncommon" },
-  pierce: { cap: 10, weight: 8, rarity: "uncommon" },
-  homing: { cap: 10, weight: 3, rarity: "epic" },
-  explosive: { cap: 10, weight: 8, rarity: "uncommon" },
+  pierce: { cap: 5, weight: 8, rarity: "uncommon" },
+  // Homing tops out at level 3 (turn rate hits its ceiling) — capped to match
+  // so there are no dead picks past the cap.
+  homing: { cap: 3, weight: 2, rarity: "epic" },
+  // Explosive adds AoE cleave that scales with Damage — the strongest modifier
+  // below the legendaries, so it sits a tier above the other utility modifiers.
+  explosive: { cap: 10, weight: 4, rarity: "rare" },
   burn: { cap: 10, weight: 8, rarity: "uncommon" },
   // Bounce spawns full clone bullets that chain (ADR-0005) — the strongest
-  // modifier, so it's a rare, hard-capped legendary drop.
+  // modifier, so it's a hard-capped legendary drop.
   bounce: { cap: 3, weight: 1, rarity: "legendary" },
 } as const;
 
 /** Effect parameters for the #6b modifiers (Homing/Explosive/Burn/Bounce). */
 export const MODIFIER_FX = {
-  /** Homing turn rate (rad/s): scales per level up to a cap. */
-  homing: { turnRatePerLevel: 2.5, maxTurnRate: 11 },
+  /** Homing turn rate (rad/s): 4/8/12 across its 3 levels. The cap matches the
+   *  curve so every level contributes and none are dead (ADR-0009). */
+  homing: { turnRatePerLevel: 4, maxTurnRate: 12 },
   /** Explosive AoE on impact. Damage is a fraction of the bullet's damage. */
   explosive: { baseRadius: 70, radiusPerLevel: 16, damageFactor: 0.6 },
   /** Burn damage-over-time. dps scales per level; duration is fixed. */
