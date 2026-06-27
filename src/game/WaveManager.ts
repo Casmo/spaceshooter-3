@@ -1,4 +1,4 @@
-import { WAVES, MINE, BOSS } from "../config";
+import { WAVES, MINE } from "../config";
 import { EnemyPool, type WaveMods } from "./EnemyPool";
 
 type SpawnKind =
@@ -12,8 +12,9 @@ type SpawnKind =
 /**
  * Drives discrete, escalating waves. Each wave spawns a budget of enemies over
  * time; once the budget is spent and the field is clear, a ~3s breather plays
- * (with a "NEXT WAVE" banner) before the next, harder wave begins. A mini-boss
- * caps every Nth wave. Difficulty scales via count, stats, and asteroid splits.
+ * (with a "NEXT WAVE" banner) before the next, harder wave begins. A boss or
+ * mini-boss is spliced mid-wave into the budget on milestone waves. Difficulty
+ * scales via count, stats, and asteroid splits.
  */
 export class WaveManager {
   private waveNumber = 0;
@@ -90,23 +91,25 @@ export class WaveManager {
   }
 
   private composeWave(n: number): SpawnKind[] {
-    const queue: SpawnKind[] = [];
-    // Milestone capstones: a Boss caps every bossEvery wave (replacing the
-    // mini-boss there); a mini-boss caps the remaining every-miniBossEvery waves.
-    // This is the single place to change which capstone a milestone spawns.
-    if (n % WAVES.bossEvery === 0) {
-      queue.push("boss");
-      for (let i = 0; i < BOSS.escortCount; i++) queue.push("swarmer");
-      return queue;
-    }
-    if (n % WAVES.miniBossEvery === 0) {
-      queue.push("miniboss");
-      for (let i = 0; i < WAVES.miniBossEscort; i++) queue.push("swarmer");
-      return queue;
-    }
+    // Every wave gets a normal enemy budget that scales with n.
     const budget = WAVES.baseBudget + (n - 1) * WAVES.budgetPerWave;
-    for (let i = 0; i < budget; i++) {
-      queue.push(this.pickKind(n));
+    const queue: SpawnKind[] = [];
+    for (let i = 0; i < budget; i++) queue.push(this.pickKind(n));
+
+    // Milestone capstones: a Boss anchors every bossEvery wave (overriding the
+    // mini-boss there); a mini-boss anchors the remaining every-miniBossEvery
+    // waves. The capstone is spliced into the budget mid-wave (it no longer
+    // replaces the budget). This is the single place to change which capstone a
+    // milestone spawns.
+    const capstone: SpawnKind | null =
+      n % WAVES.bossEvery === 0
+        ? "boss"
+        : n % WAVES.miniBossEvery === 0
+          ? "miniboss"
+          : null;
+    if (capstone) {
+      const at = Math.floor(budget * WAVES.capstoneSpawnFraction);
+      queue.splice(at, 0, capstone);
     }
     return queue;
   }

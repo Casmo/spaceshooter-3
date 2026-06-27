@@ -204,8 +204,6 @@ export const BOSS = {
   /** Horizontal gap (virtual px) between the two bullet streams. */
   curtainColumnGap: 120,
   bulletDamage: 18,
-  /** Escorts spawned alongside the boss (0 for the wave-10 boss; future knob). */
-  escortCount: 0,
   radiusFactor: 0.7,
 } as const;
 
@@ -228,9 +226,10 @@ export const MINE = {
   speedRampEveryWaves: 5,
   /** Hard speed ceiling (virtual px/s) — reached ~wave 36. */
   maxSpeed: 500,
-  /** First wave Mines appear (normal waves only — never mini-boss waves). */
+  /** First wave Mines can appear in the spawn budget. */
   startWave: 6,
-  /** Per-spawn share of normal-wave spawns from startWave on. */
+  /** Per-spawn share of budget spawns from startWave on (every wave, including
+   *  capstone waves now that they carry a normal budget). */
   spawnChance: 0.15,
   /** Side spawns are confined to the top fraction of the field. */
   sideSpawnMaxYFactor: 0.6,
@@ -296,13 +295,15 @@ export const WAVES = {
   /** +1 asteroid split every N waves (capped). */
   splitBonusEveryWaves: 4,
   maxAsteroidSplit: 4,
-  /** A mini-boss caps every Nth wave (except boss waves — see bossEvery). */
+  /** A mini-boss anchors every Nth wave (except boss waves — see bossEvery). */
   miniBossEvery: 5,
-  /** Extra swarmers spawned alongside the mini-boss. */
-  miniBossEscort: 3,
-  /** A Boss caps every Nth wave, replacing the mini-boss there. Must be a
+  /** A Boss anchors every Nth wave, replacing the mini-boss there. Must be a
    *  multiple of miniBossEvery so the boss check cleanly overrides it. */
   bossEvery: 10,
+  /** On a capstone (boss/mini-boss) wave the capstone is spliced into the normal
+   *  enemy budget after this fraction of the adds have spawned, so it enters
+   *  mid-wave alongside the mix (0 = leads the wave, 1 = trails it). */
+  capstoneSpawnFraction: 0.33,
 } as const;
 
 /** Projectile pooling and the safety cap. */

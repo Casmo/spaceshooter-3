@@ -72,7 +72,7 @@ Per-upgrade `cap` and effect curve remain configurable; `weight` is derived from
 
 ## 8. Waves & enemies
 - **Discrete, endless Waves.** Each Wave = a spawn budget; clear all → **~3s Breather + "Wave N" banner** → next, harder Wave.
-- **Mini-boss every 5th Wave** (scaled `insect-2`/`large-A/B`), simple attack, guaranteed Star on death.
+- **Capstones are embedded, not standalone** (ADR-0011): every milestone Wave runs its normal scaling budget **plus** a single Capstone spliced in mid-wave (after ~⅓ of the adds). A **Mini-boss** anchors every 5th Wave; a **Boss** anchors every 10th (overriding the mini-boss there). Guaranteed Star on the capstone's death.
 - Difficulty scales via enemy count, HP, speed, mix, and **higher Asteroid split counts** in later Waves.
 
 | Enemy | Sprite | Behavior |
@@ -80,7 +80,7 @@ Per-upgrade `cap` and effect curve remain configurable; `weight` is derived from
 | Swarmer | `insect-1` | small, fast, low HP, formations/sine, contact damage, no shooting |
 | Gunner | `insect-2` | bigger, slower, more HP, fires at player |
 | Asteroid | `small/medium/large-A/B` | drifts down, contact damage, splits per `splitCount` (large→medium→small) |
-| Mini-boss | scaled `insect-2`/`large` | wave-5 capstone, high HP, simple pattern |
+| Mini-boss | scaled `insect-2`/`large` | every-5th-wave capstone (embedded in the budget), high HP, simple pattern |
 
 - **Enemy bullets:** recolored `plasm.png`, **tinted by damage tier** (white→yellow→orange→red→purple) so threat is readable.
 - Contact with any enemy = damage to player.
