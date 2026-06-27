@@ -1,4 +1,4 @@
-# Space Shooter 3 — Design Spec (v1)
+# Spaceshooter 3 — Design Spec (v1)
 
 A vertical-scrolling roguelike shmup in PixiJS v8 + TypeScript + Vite. Glossary lives in `/CONTEXT.md`; architectural decisions in `/docs/adr/`. This doc is the buildable spec — all numbers here are starting values and live in a single central `config.ts`.
 
@@ -87,7 +87,7 @@ Per-upgrade `cap`, `weight`, and effect curve all configurable.
 
 ## 10. Screens & flow
 - **Main menu:** Start, Credits, Exit. **Exit = `window.close()`** (works under nw.js / script-opened windows; no-op in a normal tab).
-- **Credits:** "Space Shooter 3" · Created by Mathieu · Art by **Lil Cthulhu** (lil-cthulhu.itch.io) · Built with PixiJS · Back button.
+- **Credits:** "Spaceshooter 3" · Created by Mathieu · Art by **Lil Cthulhu** (lil-cthulhu.itch.io) · Built with PixiJS · Back button.
 - **Game over:** this Run's stats vs. persisted bests + Play Again.
 
 ## 11. Persistence (localStorage)

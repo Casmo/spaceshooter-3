@@ -16,7 +16,7 @@ export class MenuScene implements Scene {
     this.view.addChild(this.starfield.view);
 
     const title = new Text({
-      text: "SPACE SHOOTER 3",
+      text: "SPACESHOOTER 3",
       style: {
         fill: 0xffffff,
         fontSize: 96,

@@ -6,7 +6,7 @@ import { makeButton } from "../ui/Button";
 import { MenuScene } from "./MenuScene";
 
 const LINES: [string, number][] = [
-  ["SPACE SHOOTER 3", 72],
+  ["SPACESHOOTER 3", 72],
   ["", 20],
   ["Created by Mathieu", 40],
   ["", 14],

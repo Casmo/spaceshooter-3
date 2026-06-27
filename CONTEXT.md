@@ -1,4 +1,4 @@
-# Space Shooter 3
+# Spaceshooter 3
 
 A browser-based, vertical-scrolling roguelike shoot-'em-up built with PixiJS. Each run starts fresh; the depth comes from stacking bullet **Modifiers** into emergent combinations. This file is the shared vocabulary — terms only, no implementation.
 
