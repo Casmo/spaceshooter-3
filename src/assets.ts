@@ -10,8 +10,8 @@ import { Assets, Rectangle, Texture } from "pixi.js";
  * nearest-neighbour to stay crisp. Several assets ship as horizontal sprite
  * sheets; loadAssets() slices those into per-frame Textures.
  *
- * The background is a 2-layer parallax built from BG_Nebula and BG_Stars1
- * (halves split out of the Space_xx sheets — see the Backgrounds folder).
+ * The background is a parallax star layer built from BG_Stars1 (split out of
+ * the Space_xx sheets — see the Backgrounds folder).
  */
 
 /** Base files loaded by the Assets system (sheets included, sliced below). */
@@ -33,8 +33,7 @@ const MANIFEST = {
   explosionSmall:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion01-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
-  // Parallax background layers (nebula = slow/far, stars = faster/near).
-  nebula: "./assets/SpaceShooter/Backgrounds/BG_Nebula.png",
+  // Parallax background star layer.
   starsA: "./assets/SpaceShooter/Backgrounds/BG_Stars1.png",
   // Menu Cursor: drawn pointer for the (lock-held) Upgrade Prompt. Lives outside
   // the SpaceShooter pack as a placeholder art (see ADR-0008).
@@ -56,7 +55,6 @@ export type AssetAlias =
   | "enemyBullet"
   | "star"
   | "smoke"
-  | "nebula"
   | "starsA"
   | "cursor"
   | "explosion";
@@ -119,7 +117,6 @@ export async function loadAssets(): Promise<void> {
   textures.set("mine", Assets.get("mine"));
   textures.set("bullet", Assets.get("bullet"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
-  textures.set("nebula", Assets.get("nebula"));
   textures.set("starsA", Assets.get("starsA"));
   textures.set("cursor", Assets.get("cursor"));
 

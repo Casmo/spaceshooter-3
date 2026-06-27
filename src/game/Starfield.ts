@@ -9,9 +9,8 @@ interface Layer {
 
 /**
  * Parallax space background. A solid black base fills the field from the first
- * frame; over it, two transparent layers (a far nebula and a nearer star layer,
- * split out of the Space_xx sheets) tile to fill and scroll top->bottom at
- * different speeds to give depth and forward motion.
+ * frame; over it, a transparent star layer (split out of the Space_xx sheets)
+ * tiles to fill and scrolls top->bottom to give a sense of forward motion.
  */
 export class Starfield {
   readonly view = new Container();
@@ -24,7 +23,6 @@ export class Starfield {
     this.view.addChild(black);
 
     const defs: { tex: AssetAlias; speed: number }[] = [
-      { tex: "nebula", speed: STARFIELD.nebulaSpeed },
       { tex: "starsA", speed: STARFIELD.starsASpeed },
     ];
 

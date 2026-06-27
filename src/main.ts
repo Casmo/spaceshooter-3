@@ -17,6 +17,9 @@ import { MenuScene } from "./scenes/MenuScene";
   await loadAssets();
   await initAudio();
 
+  // Assets and audio are ready; drop the HTML loading overlay (see index.html).
+  document.getElementById("loader")?.remove();
+
   const manager = new SceneManager(app);
   manager.changeScene(new MenuScene(manager));
 })();

@@ -1,8 +1,53 @@
+/* Asimovian is also loaded by Pixi for in-game text; declared here so the
+   pre-Pixi loading overlay can use it (falls back to sans-serif until fetched). */
+@font-face {
+    font-family: "Asimovian";
+    src: url("./assets/Fonts/Asimovian-Regular.ttf") format("truetype");
+    font-display: swap;
+}
+
 body {
     margin: 0;
     padding: 0;
     color: rgba(255, 255, 255, 0.87);
     background-color: #000000;
+}
+
+/* Loading overlay: shown immediately on page open, removed by main.ts once
+   assets and audio finish loading (the real wait, before any Pixi scene). */
+#loader {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    background-color: #000000;
+    color: #ffffff;
+}
+
+#loader .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: loader-spin 0.8s linear infinite;
+}
+
+#loader .label {
+    font-family: "Asimovian", Arial, sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+}
+
+@keyframes loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 #app {

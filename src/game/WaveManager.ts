@@ -12,7 +12,7 @@ type SpawnKind =
 /**
  * Drives discrete, escalating waves. Each wave spawns a budget of enemies over
  * time; once the budget is spent and the field is clear, a ~3s breather plays
- * (with a "Wave N" banner) before the next, harder wave begins. A mini-boss
+ * (with a "NEXT WAVE" banner) before the next, harder wave begins. A mini-boss
  * caps every Nth wave. Difficulty scales via count, stats, and asteroid splits.
  */
 export class WaveManager {
@@ -40,9 +40,9 @@ export class WaveManager {
   get inBreather(): boolean {
     return this.phase === "breather";
   }
-  /** Text for the breather banner ("WAVE N" for the wave about to start). */
+  /** Text for the breather banner shown before the next wave starts. */
   get bannerText(): string {
-    return `WAVE ${this.waveNumber + 1}`;
+    return "NEXT WAVE";
   }
 
   update(dt: number): void {

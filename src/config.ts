@@ -14,11 +14,9 @@ export const VIRTUAL_HEIGHT = 1080;
  *  future body-font pairing would split this into display/body constants. */
 export const FONT_FAMILY = "Asimovian, Arial, sans-serif";
 
-/** Parallax background scroll speeds (virtual px/second, top -> bottom). The
- *  layers are split out of the Space_xx sheets: a slow far nebula and a faster
- *  star layer, all over a solid black base. */
+/** Parallax background scroll speed (virtual px/second, top -> bottom). A star
+ *  layer (split out of the Space_xx sheets) scrolls over a solid black base. */
 export const STARFIELD = {
-  nebulaSpeed: 12,
   starsASpeed: 40,
 } as const;
 
@@ -341,7 +339,7 @@ export const SCORE = {
 
 /** Star pickup: the only collectible in v1 (XP only). Native-size coin. */
 export const STAR = {
-  scale: 1,
+  scale: 3,
   /** Seconds before an uncollected star expires. */
   lifetime: 5,
   /** Drop chance per normal kill (mini-boss always drops one). */
