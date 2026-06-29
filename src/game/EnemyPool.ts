@@ -1,4 +1,4 @@
-import { Container, Sprite, Graphics } from "pixi.js";
+import { Container, Sprite, Graphics, Texture } from "pixi.js";
 import {
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
@@ -10,13 +10,14 @@ import {
   BOSS,
   MINE,
   WARDEN,
+  BOMBER,
   ENEMY_BULLET,
   WAVES,
   XP,
   SCORE,
   type AsteroidSize,
 } from "../config";
-import { getTexture, type AssetAlias } from "../assets";
+import { getTexture, getFrames, type AssetAlias } from "../assets";
 
 export type EnemyKind =
   | "swarmer"
@@ -25,7 +26,8 @@ export type EnemyKind =
   | "miniboss"
   | "boss"
   | "mine"
-  | "warden";
+  | "warden"
+  | "bomber";
 
 /** Hard cap on Shield Nodes per enemy (WARDEN.nodeCount must not exceed it). The
  *  sprites are pre-allocated per pooled enemy, so this stays small. */
@@ -173,6 +175,22 @@ export class Enemy {
   private mineVx = 0;
   private mineVy = 0;
 
+  // Animated sprite (ADR-0013): when set, update() cycles these frames on the
+  // sprite. Null for the static-texture enemies (every kind but the Bomber).
+  private animFrames: Texture[] | null = null;
+  private animInterval = 0;
+  private animTimer = 0;
+  private animIndex = 0;
+
+  // Bomber: re-aims at the player every dodgeInterval. Between bursts the heading
+  // is fixed and bombSpeed eases down to the slow drift floor. dodgeTimer drives
+  // the cadence; the burst's max speed (bombDashSpeed) is the wave-ramped cap.
+  private bombDodgeTimer = 0;
+  private bombHeadX = 0;
+  private bombHeadY = 1;
+  private bombSpeed = 0;
+  private bombDashSpeed = 0;
+
   // Shooting (gunner / mini-boss / warden).
   private canShoot = false;
   private shootInterval = 0;
@@ -261,6 +279,11 @@ export class Enemy {
     this.splitInto = null;
     this.splitCount = 0;
     this.aimed = false;
+    this.animFrames = null;
+    this.animTimer = 0;
+    this.animIndex = 0;
+    this.bombDodgeTimer = 0;
+    this.bombSpeed = 0;
     this.canShoot = false;
     this.shootTimer = 0;
     this.fanCount = 1;
@@ -487,6 +510,39 @@ export class Enemy {
     this.sprite.position.set(x, y);
   }
 
+  /**
+   * Spawn a Bomber at a pre-chosen off-screen point (x, y). Unlike the Mine it
+   * re-aims at the player every dodgeInterval: a telegraph, then a fast burst
+   * that eases down to a slow drift along that heading. The first burst is locked
+   * on the first update() (toward the player then), like the Mine's aim. Burst
+   * speed ramps by wave to a hard cap and ignores speedMult (Mine-style). It is
+   * animated — its sprite cycles the Bombe frames (ADR-0013).
+   */
+  spawnBomber(x: number, y: number, wave: number, mods: WaveMods): void {
+    this.reset("bomber", BOMBER.scale);
+    this.kind = "bomber";
+    this.mods = mods;
+    this.xpValue = XP.bomber;
+    this.scoreValue = SCORE.bomber;
+    this.hp = BOMBER.hp * mods.hpMult;
+    this.maxHp = this.hp;
+    // Contact routes through detonation in the scene; this is parity only.
+    this.contactDamage = BOMBER.contactDamage;
+    const steps = Math.floor(
+      (wave - BOMBER.startWave) / BOMBER.dashSpeedRampEveryWaves,
+    );
+    this.bombDashSpeed = Math.min(
+      BOMBER.maxDashSpeed,
+      BOMBER.baseDashSpeed + Math.max(0, steps) * BOMBER.dashSpeedRampAmount,
+    );
+    this.bombDodgeTimer = BOMBER.dodgeInterval;
+    // Animate the 5-frame Bombe sheet.
+    this.animFrames = getFrames("bomber");
+    this.animInterval = BOMBER.frameInterval;
+    this.radius = (this.sprite.width / 2) * BOMBER.radiusFactor;
+    this.sprite.position.set(x, y);
+  }
+
   /** Apply (or refresh) a burn DoT. Burns stack their dps and refresh duration. */
   applyBurn(dps: number, duration: number): void {
     this.burnDps += dps;
@@ -504,6 +560,15 @@ export class Enemy {
         return;
       }
       if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+    }
+    // Animated enemies (the Bomber) cycle their frame set on the sprite (ADR-0013).
+    if (this.animFrames) {
+      this.animTimer += dt;
+      if (this.animTimer >= this.animInterval) {
+        this.animTimer -= this.animInterval;
+        this.animIndex = (this.animIndex + 1) % this.animFrames.length;
+        this.sprite.texture = this.animFrames[this.animIndex];
+      }
     }
     switch (this.kind) {
       case "swarmer":
@@ -527,6 +592,9 @@ export class Enemy {
         break;
       case "warden":
         this.updateWarden(dt);
+        break;
+      case "bomber":
+        this.updateBomber(dt, ctx);
         break;
       case "mine":
         if (!this.aimed) {
@@ -617,6 +685,57 @@ export class Enemy {
     }
 
     this.updateShield(dt);
+  }
+
+  /**
+   * Bomber: re-aim at the player every dodgeInterval. On the spawn frame it locks
+   * an entry burst toward the player (like the Mine's aim). Each cycle it
+   * telegraphs (a tint pulse in the final telegraphTime), then bursts — heading
+   * re-aimed at the player's current position at the wave-ramped dash speed.
+   * Between bursts the heading holds and bombSpeed eases down to the slow drift
+   * floor. It is clamped to the arena on every edge, so it never escapes.
+   */
+  private updateBomber(dt: number, ctx: EnemyContext): void {
+    const aimAtPlayer = (): void => {
+      const dx = ctx.playerX - this.sprite.x;
+      const dy = ctx.playerY - this.sprite.y;
+      const len = Math.hypot(dx, dy) || 1;
+      this.bombHeadX = dx / len;
+      this.bombHeadY = dy / len;
+      this.bombSpeed = this.bombDashSpeed;
+    };
+
+    // Entry burst: aim once on the first frame (player position is known here).
+    if (!this.aimed) {
+      aimAtPlayer();
+      this.aimed = true;
+    }
+
+    // Cadence: telegraph in the final telegraphTime, then burst (re-aim).
+    this.bombDodgeTimer -= dt;
+    if (this.bombDodgeTimer <= BOMBER.telegraphTime && this.burnTimer <= 0) {
+      this.sprite.tint = BOMBER.telegraphTint;
+    }
+    if (this.bombDodgeTimer <= 0) {
+      aimAtPlayer();
+      this.bombDodgeTimer = BOMBER.dodgeInterval;
+      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+    }
+
+    // Ease the burst speed down to the slow drift floor along the held heading.
+    this.bombSpeed = Math.max(
+      BOMBER.driftSpeed,
+      this.bombSpeed - BOMBER.decel * dt,
+    );
+    this.sprite.x += this.bombHeadX * this.bombSpeed * dt;
+    this.sprite.y += this.bombHeadY * this.bombSpeed * dt;
+
+    // Clamp to the arena on every edge — the Bomber never leaves the field; the
+    // next re-aim pulls it back toward the player.
+    const hw = this.sprite.width / 2;
+    const hh = this.sprite.height / 2;
+    this.sprite.x = Math.min(VIRTUAL_WIDTH - hw, Math.max(hw, this.sprite.x));
+    this.sprite.y = Math.min(VIRTUAL_HEIGHT - hh, Math.max(hh, this.sprite.y));
   }
 
   /** Advance the orbiting Shield: rotate the ring, tick each live Node's burn,
@@ -935,6 +1054,26 @@ export class EnemyPool {
       x = edge === 1 ? -margin : VIRTUAL_WIDTH + margin;
     }
     e.spawnMine(x, y, wave, mods);
+    this.live.push(e);
+  }
+
+  /** Spawn a Bomber just outside the top, left, or right edge (equal odds); side
+   *  spawns are confined to the upper part of the field. It clamps onto the field
+   *  on its first update, then re-aims at the player every dodgeInterval. */
+  spawnBomber(mods: WaveMods, wave: number): void {
+    const e = this.obtain();
+    const margin = 40;
+    const edge = Math.floor(Math.random() * 3);
+    let x: number;
+    let y: number;
+    if (edge === 0) {
+      x = this.randomTopX();
+      y = -margin;
+    } else {
+      y = Math.random() * VIRTUAL_HEIGHT * BOMBER.sideSpawnMaxYFactor;
+      x = edge === 1 ? -margin : VIRTUAL_WIDTH + margin;
+    }
+    e.spawnBomber(x, y, wave, mods);
     this.live.push(e);
   }
 

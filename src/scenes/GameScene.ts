@@ -16,7 +16,12 @@ import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
 import { ProjectilePool, type Projectile } from "../game/ProjectilePool";
-import { EnemyPool, type Enemy, type EnemyContext } from "../game/EnemyPool";
+import {
+  EnemyPool,
+  type Enemy,
+  type EnemyContext,
+  type EnemyKind,
+} from "../game/EnemyPool";
 import { WaveManager } from "../game/WaveManager";
 import { StarPool } from "../game/StarPool";
 import { EffectsPool } from "../game/EffectsPool";
@@ -591,10 +596,10 @@ export class GameScene implements Scene {
           return;
         }
         enemy.kill();
-        // A Mine's detonation (in destroyEnemy) deals the player damage — the
-        // player is at the blast centre — so don't also apply contact damage.
+        // An explosive's detonation (in destroyEnemy) deals the player damage —
+        // the player is at the blast centre — so don't also apply contact damage.
         this.destroyEnemy(enemy);
-        if (enemy.kind !== "mine") this.player.takeHit(enemy.contactDamage);
+        if (!isExplosive(enemy.kind)) this.player.takeHit(enemy.contactDamage);
         return;
       }
     }
@@ -610,23 +615,26 @@ export class GameScene implements Scene {
       this.stars.spawn(enemy.x, enemy.y);
     }
     this.enemies.handleDeath(enemy);
-    // A destroyed Mine detonates — the only enemy whose death is itself a threat.
-    if (enemy.kind === "mine") this.detonateMine(enemy);
+    // A destroyed explosive (Mine or Bomber) detonates — its death is itself a
+    // threat. Both share the Mine's blast exactly.
+    if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
   }
 
   /**
-   * Mine detonation: a full-size Explosion04 burst at the Mine's position whose
-   * native footprint (240px) matches its blast radius, plus flat AoE damage to
-   * the player alone if within that radius. Fires on any destruction (gunfire,
-   * Explosive AoE, Burn kill, or player contact) — never on an off-screen escape.
+   * Explosive detonation (Mine or Bomber): a full-size Explosion04 burst at the
+   * enemy's position whose native footprint (240px) matches the blast radius,
+   * plus flat AoE damage to the player alone if within that radius. Fires on any
+   * destruction (gunfire, Explosive AoE, Burn kill, or player contact) — the Mine
+   * never on an off-screen escape; the Bomber is clamped on-screen so it always
+   * dies in-bounds. Both reuse the Mine's blast tuning.
    */
-  private detonateMine(mine: Enemy): void {
+  private detonateExplosive(enemy: Enemy): void {
     playSound("explosion", 0.6);
     // Scale the burst so its footprint matches the blast radius exactly.
     const scale = MINE.explosionRadius / MINE.explosion04Half;
-    this.effects.explode(mine.x, mine.y, scale, 0xffffff, "explosionBig");
-    const dx = this.player.x - mine.x;
-    const dy = this.player.y - mine.y;
+    this.effects.explode(enemy.x, enemy.y, scale, 0xffffff, "explosionBig");
+    const dx = this.player.x - enemy.x;
+    const dy = this.player.y - enemy.y;
     if (dx * dx + dy * dy <= MINE.explosionRadius * MINE.explosionRadius) {
       this.player.takeHit(MINE.explosionDamage);
     }
@@ -693,6 +701,13 @@ export class GameScene implements Scene {
 
 function clamp(v: number, min: number, max: number): number {
   return v < min ? min : v > max ? max : v;
+}
+
+/** Explosive enemies whose death is itself a threat — they detonate (Mine's
+ *  blast) on any destruction or player contact, instead of dealing plain contact
+ *  damage. Both share detonateExplosive. */
+function isExplosive(kind: EnemyKind): boolean {
+  return kind === "mine" || kind === "bomber";
 }
 
 interface Circle {

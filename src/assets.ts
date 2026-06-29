@@ -23,6 +23,9 @@ const MANIFEST = {
   boss: "./assets/SpaceShooter/Enemies/fighter2.png",
   mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
   warden: "./assets/SpaceShooter/Enemies/CrabShip.png",
+  // Bomber: a 5-frame animation sheet (16x16 each). The first animated enemy —
+  // the Enemy cycles these frames in update() (ADR-0013).
+  bomber: "./assets/SpaceShooter/ProjectilesAndExplosions/Bombe-Sheet.png",
   asteroids: "./assets/SpaceShooter/Enemies/Asteroids-Sheet.png",
   // Debris atlas (6 irregular chunks). The Warden's Shield Nodes are cut from
   // the 3rd chunk (31x31 at 210,19) — not an even-frame slice.
@@ -53,6 +56,7 @@ export type AssetAlias =
   | "boss"
   | "mine"
   | "warden"
+  | "bomber"
   | "shieldNode"
   | "asteroidLarge"
   | "asteroidMedium"
@@ -69,6 +73,7 @@ export type AssetAlias =
 export type FrameAlias =
   | "ship"
   | "star"
+  | "bomber"
   | "explosion"
   | "explosionBig"
   | "explosionSmall";
@@ -161,6 +166,12 @@ export async function loadAssets(): Promise<void> {
     "explosionSmall",
     sliceFrames(Assets.get("explosionSmall"), 32, 5),
   );
+
+  // Bomber: a 5-frame animation sheet (16x16). The Enemy cycles these in
+  // update() (ADR-0013); the body texture defaults to the first frame.
+  const bomberFrames = sliceFrames(Assets.get("bomber"), 16, 5);
+  frameSets.set("bomber", bomberFrames);
+  textures.set("bomber", bomberFrames[0]);
 
   // Asteroids: one 12-frame sheet (64x64); pick three distinct sizes.
   const asteroidFrames = sliceFrames(Assets.get("asteroids"), 64, 12);

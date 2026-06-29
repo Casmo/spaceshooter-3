@@ -247,6 +247,53 @@ export const MINE = {
   radiusFactor: 0.7,
 } as const;
 
+/** Bomber (Bombe-Sheet): a late-game flying explosive and the Mine's re-aiming
+ *  cousin. Where the Mine locks ONE aimed course at spawn, the Bomber re-aims at
+ *  the player's CURRENT position every ~3s: a brief telegraph, then a fast burst
+ *  toward the player, after which its speed eases down to a slow drift along that
+ *  heading until the next burst. It never leaves the field (clamped to the arena
+ *  on every edge) — the only exits are being shot down or detonating on contact.
+ *  Detonation reuses the Mine's blast exactly (MINE.explosionRadius/Damage). It
+ *  is the first animated enemy — its sprite cycles a 5-frame sheet (see ADR-0013). */
+export const BOMBER = {
+  /** Display scale: 16x16 native frames at 4x = 64x64 on the field. */
+  scale: 4,
+  hp: 35,
+  /** Contact routes through detonation in the scene (reusing the Mine's blast);
+   *  this is parity only, mirroring how the Mine carries explosionDamage here. */
+  contactDamage: 40,
+  /** First wave Bombers appear in the spawn budget (with the Warden). */
+  startWave: 15,
+  /** Per-pick share of the budget from startWave on (a flat share off the top,
+   *  like the Mine/Warden). Between the Mine (0.15) and the Warden (0.08). */
+  spawnChance: 0.1,
+  /** Side spawns are confined to the top fraction of the field (deeper than the
+   *  Mine's 0.6 — a Bomber that re-aims is fair lower down, but never beside the
+   *  player at the very bottom). */
+  sideSpawnMaxYFactor: 0.8,
+  /** Seconds between bursts: it re-aims at the player on this cadence. */
+  dodgeInterval: 3,
+  /** Wind-up before each burst: the sprite pulses to telegraph the lunge. */
+  telegraphTime: 0.3,
+  telegraphTint: 0xffcc33,
+  /** Burst speed at the entry wave; ramps by wave to a hard cap, ignoring
+   *  speedMult (Mine-style, so the lunge speed stays exactly tunable). */
+  baseDashSpeed: 520,
+  dashSpeedRampAmount: 60,
+  dashSpeedRampEveryWaves: 5,
+  maxDashSpeed: 860,
+  /** Slow drift-speed floor the burst eases down to between dodges. */
+  driftSpeed: 90,
+  /** Ease-down rate from burst speed toward driftSpeed (virtual px/s^2). A gentle
+   *  decay sustains the lunge longer, so each dodge covers more ground. */
+  decel: 520,
+  /** Seconds per animation frame (5 frames in Bombe-Sheet). */
+  frameInterval: 0.12,
+  /** Collision radius as a fraction of the sprite half-width — a touch larger
+   *  than the other contact enemies so the lunge connects fairly. */
+  radiusFactor: 0.85,
+} as const;
+
 /** Warden (CrabShip): a slow late-game enemy that descends straight, fires a
  *  single aimed shot, makes one slow lateral dodge at mid-field, and is ringed by
  *  an orbiting Shield of destructible Nodes. The player fires straight up, so a
@@ -384,6 +431,7 @@ export const XP = {
   boss: 60,
   mine: 4,
   warden: 14,
+  bomber: 6,
   /** XP granted by collecting a Star. */
   star: 12,
   /** First level-up needs this much XP (front-loaded so the first few come
@@ -408,6 +456,7 @@ export const SCORE = {
   boss: 600,
   mine: 25,
   warden: 100,
+  bomber: 35,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,
 } as const;
