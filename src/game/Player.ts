@@ -113,7 +113,7 @@ export class Player {
    */
   takeHit(damage: number): void {
     if (this.invulnTimer > 0 || this.gameOver) return;
-    playSound("hit");
+    playSound("playerHit");
     this.hp -= damage;
     if (this.hp > 0) {
       this.invulnTimer = PLAYER.iframesHit;

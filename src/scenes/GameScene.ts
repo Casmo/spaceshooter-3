@@ -79,7 +79,8 @@ export class GameScene implements Scene {
   private readonly enemyCtx: EnemyContext = {
     playerX: 0,
     playerY: 0,
-    fire: (x, y, vx, vy, damage) =>
+    fire: (x, y, vx, vy, damage) => {
+      playSound("enemyShoot", 0.35);
       this.enemyBullets.spawn({
         x,
         y,
@@ -87,7 +88,8 @@ export class GameScene implements Scene {
         vy,
         damage,
         tint: damageTierColor(damage),
-      }),
+      });
+    },
   };
 
   // Input state. Steering is relative (ADR-0006): raw mouse-movement deltas
@@ -295,14 +297,15 @@ export class GameScene implements Scene {
     this.resolveEnemyBulletHits();
     this.resolveContactHits();
 
-    this.awardXp(
-      this.stars.update(
-        dt,
-        this.player.x,
-        this.player.y,
-        this.player.pickupRange,
-      ),
+    const starXp = this.stars.update(
+      dt,
+      this.player.x,
+      this.player.y,
+      this.player.pickupRange,
     );
+    // One pickup chime per frame regardless of how many Stars landed at once.
+    if (starXp > 0) playSound("pickup", 0.6);
+    this.awardXp(starXp);
 
     this.updateOverlay();
 
@@ -381,6 +384,7 @@ export class GameScene implements Scene {
       if (!circlesOverlap(bullet, node)) continue;
       bullet.hits.add(node);
       this.effects.spark(bullet.x, bullet.y);
+      playSound("bulletHit", 0.4);
       enemy.damageShieldNode(node, bullet.damage);
       if (bullet.burnDps > 0)
         node.applyBurn(bullet.burnDps, bullet.burnDuration);
@@ -421,6 +425,7 @@ export class GameScene implements Scene {
   /** Apply one bullet→enemy hit: direct damage, burn, and explosion. */
   private applyBulletHit(bullet: Projectile, enemy: Enemy): void {
     this.effects.spark(bullet.x, bullet.y);
+    playSound("bulletHit", 0.4);
     if (enemy.takeDamage(bullet.damage)) this.destroyEnemy(enemy);
     if (bullet.burnDps > 0)
       enemy.applyBurn(bullet.burnDps, bullet.burnDuration);
@@ -615,9 +620,11 @@ export class GameScene implements Scene {
       this.stars.spawn(enemy.x, enemy.y);
     }
     this.enemies.handleDeath(enemy);
-    // A destroyed explosive (Mine or Bomber) detonates — its death is itself a
-    // threat. Both share the Mine's blast exactly.
+    // A destroyed explosive (Mine or Bomber) detonates with its own louder blast
+    // (detonateExplosive); every other enemy gets the standard kill boom. Both
+    // draw from the explosion variant pool (ADR-0014).
     if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
+    else playSound("explosion", 0.4);
   }
 
   /**

@@ -2,12 +2,13 @@ import { Container, Text } from "pixi.js";
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { Starfield } from "../game/Starfield";
-import { playMusic, stopMusic } from "../game/audio";
 import { makeButton } from "../ui/Button";
+import { AudioControls } from "../ui/AudioControls";
 import { GameScene } from "./GameScene";
 import { CreditsScene } from "./CreditsScene";
 
-/** Main menu: Start, Credits, Exit. Plays the menu music while shown. */
+/** Main menu: Start, Credits, Exit, plus inline audio volume controls. Music is
+ *  app-global (started at boot, see main.ts), so the menu no longer manages it. */
 export class MenuScene implements Scene {
   readonly view = new Container();
   private readonly starfield = new Starfield();
@@ -42,7 +43,9 @@ export class MenuScene implements Scene {
       this.view.addChild(btn);
     });
 
-    playMusic();
+    const audio = new AudioControls();
+    audio.view.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 290);
+    this.view.addChild(audio.view);
   }
 
   update(dt: number): void {
@@ -50,7 +53,6 @@ export class MenuScene implements Scene {
   }
 
   destroy(): void {
-    stopMusic();
     this.view.destroy({ children: true });
   }
 }

@@ -13,6 +13,12 @@ const LINES: [string, number][] = [
   ["Art by Lil Cthulhu", 36],
   ["lil-cthulhu.itch.io", 28],
   ["", 14],
+  ["Sound FX by Phoenix1291", 36],
+  ["phoenix1291.itch.io/sound-effects-pack-2", 24],
+  ["", 14],
+  ["Music by Creative Core Studio (Mr.Cat)", 36],
+  ["creative-core-studio.itch.io/free-mrcat-bit-piano-music", 24],
+  ["", 14],
   ["Built with PixiJS", 32],
 ];
 
@@ -24,7 +30,7 @@ export class CreditsScene implements Scene {
   constructor(private readonly manager: SceneManager) {
     this.view.addChild(this.starfield.view);
 
-    let y = 220;
+    let y = 140;
     for (const [text, size] of LINES) {
       if (text) {
         const line = new Text({

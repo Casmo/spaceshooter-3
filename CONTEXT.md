@@ -137,9 +137,23 @@ _Avoid_: gem, orb, XP drop.
 ### Effects
 
 **Hit Spark**:
-A small, untinted, decorative burst played at every player-bullet→enemy contact — including pierce, multishot, and Bounce-bullet hits, and whether or not the hit kills. Purely cosmetic; deals no damage and carries no Modifier meaning. Fixed native size, plays once. Distinct from the Explosive Modifier's larger damaging burst, which stacks on top of it on Explosive hits. (`Explosion01-Sheet`)
+A small, untinted, decorative burst played at every player-bullet→enemy contact — including pierce, multishot, and Bounce-bullet hits, and whether or not the hit kills. Deals no damage and carries no Modifier meaning. Fixed native size, plays once. It carries the throttled impact sound (the `bulletHit` SFX), but is otherwise visual flair. Distinct from the Explosive Modifier's larger damaging burst, which stacks on top of it on Explosive hits. (`Explosion01-Sheet`)
 _Avoid_: explosion, blast (reserve those for the Explosive Modifier's burst).
 
 **HP Bar**:
 A thin flat-red bar that appears above an enemy the instant it takes its first damage and tracks its remaining HP as a fill length — no number, the length *is* the percentage. Hidden while the enemy is at full HP (so a one-shot kill never shows one); once shown it never fades or hides until the enemy dies or flees. Its width matches the enemy's (unrotated) sprite width with a fixed thin height, and it stays horizontal above a spinning Asteroid or Mine. Applies to *every* enemy kind, the Boss included. Distinct from the player's HUD HP bar.
 _Avoid_: health bar, lifebar, the player's HP bar (that's the HUD).
+
+### Audio
+
+**SFX**:
+Every short one-shot sound the game plays in response to a discrete event — firing, enemy fire, kills, detonations, taking damage, picking up a Star, levelling up, game over. One of the two independently-controlled audio categories. Some effects draw a random take from a **variant pool** so a repeated event doesn't replay one identical sample; the per-bullet impact sound is the only one that is rate-limited.
+_Avoid_: sound (ambiguous — could mean Music), audio (that's the whole system).
+
+**Music**:
+The single looping background track, played under everything from the title screen onward. The other of the two audio categories, controlled by its own volume independent of SFX.
+_Avoid_: soundtrack, BGM, theme.
+
+**Volume** (Music / SFX):
+The player's persisted loudness setting for each category, adjusted in 10% steps from 0 (silent) to 100%. There is no separate mute — a Volume at 0 *is* off. SFX Volume scales the relative mix of effects; Music Volume applies live to the looping track.
+_Avoid_: mute toggle (folded into Volume), gain, level.

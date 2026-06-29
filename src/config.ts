@@ -20,6 +20,26 @@ export const STARFIELD = {
   starsASpeed: 40,
 } as const;
 
+/** Audio: out-of-the-box volume defaults and the SFX rate-limits (ADR-0014).
+ *  Music and SFX are two independent volumes (0..1), each adjusted in 10% steps;
+ *  0 is the off switch (no separate mute). Persisted via Settings. Sample-to-
+ *  event mapping and per-call weights live in game/audio.ts and the call sites. */
+export const AUDIO = {
+  /** First-launch volumes (0..1). Quiet by default — music is a bed under SFX. */
+  musicDefault: 0.3,
+  sfxDefault: 0.5,
+  /** Step size for the +/- controls (fraction of full). */
+  volumeStep: 0.1,
+  /** Per-id minimum gap between plays (ms) for the frequent effects, so a dense
+   *  volley doesn't machine-gun one sample. 0 / absent = never throttled. */
+  throttleMs: {
+    /** The per-bullet Hit Spark sound fires on every impact — heavily gated. */
+    bulletHit: 80,
+    /** Enemy fire can burst (Gunner volleys, Mini-boss fans) — lightly gated. */
+    enemyShoot: 60,
+  },
+} as const;
+
 /** Player ship movement, placement, and survival. */
 export const PLAYER = {
   /** Display scale. 2x native size (bullets stay at native size). */
