@@ -359,6 +359,53 @@ export const WARDEN = {
   nodeSpin: 1.5,
 } as const;
 
+/** SpaceStation (SpaceStation.png): a slow, heavy fortress (wave 20+) that drifts
+ *  straight down and, on a telegraphed cadence, rakes a vertical COMB of
+ *  pure-horizontal bullets out BOTH flanks at once. The bullets never travel
+ *  downward, so a bottom-anchored player isn't threatened by the geometry itself —
+ *  the threat is that the station is slow, so it *lingers* in the player's zone and
+ *  drags its standing walls through it. You survive a volley by being clear of the
+ *  station's vertical band or by threading the gaps between comb bullets. The bullet
+ *  count per side ramps with the wave. Firing is driven inside updateStation (like
+ *  the Boss's curtain), so it does not use the aimed `canShoot` path. See ADR-0015. */
+export const SPACESTATION = {
+  /** 144x144 native at 1.5x ≈ 216px on the field — the largest regular enemy. */
+  scale: 1.5,
+  hp: 180,
+  contactDamage: 35,
+  /** Slow straight descent (ramps via WAVES speed steps) — the slowest descender. */
+  speed: 40,
+  bulletDamage: 10,
+  /** Collision radius as a fraction of the sprite half-width. Forgiving: the art's
+   *  wide outer rings are mostly empty, so the hitbox hugs the central mass. */
+  radiusFactor: 0.55,
+  /** First wave SpaceStations appear in the spawn budget. */
+  startWave: 20,
+  /** Per-pick share of the budget from startWave on (a flat share off the top,
+   *  like the Warden). Deliberately low — they are slow, tanky, and linger. */
+  spawnChance: 0.08,
+  // --- Side-rake comb fire ---
+  /** Seconds between volleys. */
+  fireInterval: 2,
+  /** Charge-up before each volley: the body pulses to telegraph the rake. */
+  telegraphTime: 0.4,
+  telegraphTint: 0xff6a4a,
+  /** Bullets per side: starts at basePerSide on startWave and gains one every
+   *  countRampEveryWaves, capped at maxPerSide (your 5–10 range). */
+  basePerSide: 5,
+  maxPerSide: 10,
+  countRampEveryWaves: 3,
+  /** Vertical gap (virtual px) between adjacent comb bullets — wide enough to
+   *  thread. The comb is centred on the body, so its band spans
+   *  (perSide − 1) × combSpacing (≈160px at 5, ≈360px at 10). */
+  combSpacing: 40,
+  /** Pure-horizontal bullet speed (virtual px/s). Slow, so the walls hang in the
+   *  air and read as area denial, leaving time to thread the gaps. */
+  bulletSpeed: 320,
+  /** Muzzle offset (virtual px) from the body centre to each flank's guns. */
+  muzzleOffset: 90,
+} as const;
+
 /** Enemy HP Bar: a thin flat-red bar that appears above an enemy once it has
  *  taken damage (hp < maxHp) and tracks remaining HP as a fill length — no
  *  number. Width tracks the enemy's unrotated sprite width; height and the gap
@@ -452,6 +499,7 @@ export const XP = {
   mine: 4,
   warden: 14,
   bomber: 6,
+  station: 16,
   /** XP granted by collecting a Star. */
   star: 12,
   /** First level-up needs this much XP (front-loaded so the first few come
@@ -477,6 +525,7 @@ export const SCORE = {
   mine: 25,
   warden: 100,
   bomber: 35,
+  station: 130,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,
 } as const;

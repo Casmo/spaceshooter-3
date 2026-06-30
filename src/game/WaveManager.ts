@@ -1,4 +1,4 @@
-import { WAVES, MINE, WARDEN, BOMBER } from "../config";
+import { WAVES, MINE, WARDEN, BOMBER, SPACESTATION } from "../config";
 import { EnemyPool, type WaveMods } from "./EnemyPool";
 
 type SpawnKind =
@@ -9,7 +9,8 @@ type SpawnKind =
   | "boss"
   | "mine"
   | "warden"
-  | "bomber";
+  | "bomber"
+  | "station";
 
 /**
  * Drives discrete, escalating waves. Each wave spawns a budget of enemies over
@@ -117,15 +118,17 @@ export class WaveManager {
   }
 
   /** Weighted enemy pick; gunners enter wave 2+, asteroids wave 3+, mines wave 6+,
-   *  wardens and bombers wave 15+. Mines, then wardens, then bombers each take a
-   *  flat share off the top; the rest keep the original 25/25/50 split (drawn from
-   *  a second roll) so pre-mine waves are unchanged. */
+   *  wardens and bombers wave 15+, stations wave 20+. Mines, then wardens, bombers,
+   *  and stations each take a flat share off the top; the rest keep the original
+   *  25/25/50 split (drawn from a second roll) so pre-mine waves are unchanged. */
   private pickKind(n: number): SpawnKind {
     if (n >= MINE.startWave && Math.random() < MINE.spawnChance) return "mine";
     if (n >= WARDEN.startWave && Math.random() < WARDEN.spawnChance)
       return "warden";
     if (n >= BOMBER.startWave && Math.random() < BOMBER.spawnChance)
       return "bomber";
+    if (n >= SPACESTATION.startWave && Math.random() < SPACESTATION.spawnChance)
+      return "station";
     const r = Math.random();
     if (n >= 3 && r < 0.25) return "asteroid";
     if (n >= 2 && r < 0.5) return "gunner";
@@ -158,6 +161,9 @@ export class WaveManager {
         break;
       case "bomber":
         this.enemies.spawnBomber(this.mods, this.waveNumber);
+        break;
+      case "station":
+        this.enemies.spawnStation(this.mods, this.waveNumber);
         break;
     }
   }

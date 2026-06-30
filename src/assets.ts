@@ -23,6 +23,8 @@ const MANIFEST = {
   boss: "./assets/SpaceShooter/Enemies/fighter2.png",
   mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
   warden: "./assets/SpaceShooter/Enemies/CrabShip.png",
+  // SpaceStation: the slow side-raking fortress (144x144), wave 20+ (ADR-0015).
+  station: "./assets/SpaceShooter/Enemies/SpaceStation.png",
   // Bomber: a 5-frame animation sheet (16x16 each). The first animated enemy —
   // the Enemy cycles these frames in update() (ADR-0013).
   bomber: "./assets/SpaceShooter/ProjectilesAndExplosions/Bombe-Sheet.png",
@@ -57,6 +59,7 @@ export type AssetAlias =
   | "mine"
   | "warden"
   | "bomber"
+  | "station"
   | "shieldNode"
   | "asteroidLarge"
   | "asteroidMedium"
@@ -127,6 +130,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("boss", Assets.get("boss"));
   textures.set("mine", Assets.get("mine"));
   textures.set("warden", Assets.get("warden"));
+  textures.set("station", Assets.get("station"));
   // Shield Node: one irregular chunk cut from the Debris atlas (31x31 at 210,19).
   textures.set(
     "shieldNode",

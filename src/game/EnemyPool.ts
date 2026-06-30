@@ -11,6 +11,7 @@ import {
   MINE,
   WARDEN,
   BOMBER,
+  SPACESTATION,
   ENEMY_BULLET,
   WAVES,
   XP,
@@ -27,7 +28,8 @@ export type EnemyKind =
   | "boss"
   | "mine"
   | "warden"
-  | "bomber";
+  | "bomber"
+  | "station";
 
 /** Hard cap on Shield Nodes per enemy (WARDEN.nodeCount must not exceed it). The
  *  sprites are pre-allocated per pooled enemy, so this stays small. */
@@ -220,6 +222,12 @@ export class Enemy {
   private orbitRadius = 0;
   private shieldRotationSpeed = 0;
 
+  // SpaceStation side-rake (ADR-0015): fires a vertical comb of pure-horizontal
+  // bullets out both flanks on the fireInterval cadence (driven in updateStation,
+  // so canShoot stays false). stationPerSide is the wave-ramped count per side.
+  private stationFireTimer = 0;
+  private stationPerSide = 0;
+
   // Mini-boss strafing.
   private settled = false;
   private targetY = 0;
@@ -293,6 +301,8 @@ export class Enemy {
     this.burstTimer = 0;
     this.dodgeTriggered = false;
     this.dodgeTimer = 0;
+    this.stationFireTimer = 0;
+    this.stationPerSide = 0;
     this.shieldCount = 0;
     for (const node of this.nodes) node.destroy();
     this.settled = false;
@@ -395,6 +405,36 @@ export class Enemy {
       node.sprite.visible = true;
       node.clearBurn();
     }
+  }
+
+  /**
+   * Spawn a SpaceStation: a slow, heavy fortress that descends straight and rakes
+   * a vertical comb of pure-horizontal bullets out both flanks on a telegraphed
+   * cadence (ADR-0015). The per-side bullet count ramps with the wave. Firing is
+   * driven inside updateStation (like the Boss), so canShoot stays false.
+   */
+  spawnStation(x: number, mods: WaveMods, wave: number): void {
+    this.reset("station", SPACESTATION.scale);
+    this.kind = "station";
+    this.mods = mods;
+    this.xpValue = XP.station;
+    this.scoreValue = SCORE.station;
+    this.hp = SPACESTATION.hp * mods.hpMult;
+    this.maxHp = this.hp;
+    this.contactDamage = SPACESTATION.contactDamage;
+    this.speed = SPACESTATION.speed * mods.speedMult;
+    this.bulletDamage = SPACESTATION.bulletDamage;
+    // Per-side count ramps with the wave (Mine/Bomber-style step), capped.
+    const steps = Math.floor(
+      (wave - SPACESTATION.startWave) / SPACESTATION.countRampEveryWaves,
+    );
+    this.stationPerSide = Math.min(
+      SPACESTATION.maxPerSide,
+      SPACESTATION.basePerSide + Math.max(0, steps),
+    );
+    this.stationFireTimer = SPACESTATION.fireInterval;
+    this.radius = (this.sprite.width / 2) * SPACESTATION.radiusFactor;
+    this.sprite.position.set(x, -this.sprite.height / 2);
   }
 
   spawnAsteroid(
@@ -593,6 +633,9 @@ export class Enemy {
       case "warden":
         this.updateWarden(dt);
         break;
+      case "station":
+        this.updateStation(dt, ctx);
+        break;
       case "bomber":
         this.updateBomber(dt, ctx);
         break;
@@ -685,6 +728,60 @@ export class Enemy {
     }
 
     this.updateShield(dt);
+  }
+
+  /**
+   * SpaceStation: descend straight and, on the fireInterval cadence, rake a
+   * vertical comb of pure-horizontal bullets out both flanks (ADR-0015). Each
+   * volley is preceded by a short charge-up tint. Firing is held until the body is
+   * fully on-screen so the comb never rakes from above the field.
+   */
+  private updateStation(dt: number, ctx: EnemyContext): void {
+    this.sprite.y += this.speed * dt;
+    if (this.sprite.y < this.sprite.height / 2) return;
+
+    this.stationFireTimer -= dt;
+    // Charge-up telegraph in the final telegraphTime before a volley (a burn tint
+    // takes precedence, mirroring the Bomber).
+    if (
+      this.stationFireTimer <= SPACESTATION.telegraphTime &&
+      this.burnTimer <= 0
+    ) {
+      this.sprite.tint = SPACESTATION.telegraphTint;
+    }
+    if (this.stationFireTimer <= 0) {
+      this.fireSideRake(ctx);
+      this.stationFireTimer = SPACESTATION.fireInterval;
+      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+    }
+  }
+
+  /** One side-rake volley: a vertical comb of pure-horizontal bullets out BOTH
+   *  flanks at once, centred on the body. The bullets travel only sideways — the
+   *  threat is the standing wall the slow station drags through the player's zone,
+   *  not any downward motion. */
+  private fireSideRake(ctx: EnemyContext): void {
+    const n = this.stationPerSide;
+    const speed = SPACESTATION.bulletSpeed;
+    const mid = (n - 1) / 2;
+    for (let i = 0; i < n; i++) {
+      const y = this.y + (i - mid) * SPACESTATION.combSpacing;
+      // Left flank fires left, right flank fires right (vy = 0: pure horizontal).
+      ctx.fire(
+        this.x - SPACESTATION.muzzleOffset,
+        y,
+        -speed,
+        0,
+        this.bulletDamage,
+      );
+      ctx.fire(
+        this.x + SPACESTATION.muzzleOffset,
+        y,
+        speed,
+        0,
+        this.bulletDamage,
+      );
+    }
   }
 
   /**
@@ -1015,6 +1112,12 @@ export class EnemyPool {
   spawnWarden(mods: WaveMods): void {
     const e = this.obtain();
     e.spawnWarden(this.randomTopX(), mods);
+    this.live.push(e);
+  }
+
+  spawnStation(mods: WaveMods, wave: number): void {
+    const e = this.obtain();
+    e.spawnStation(this.randomTopX(), mods, wave);
     this.live.push(e);
   }
 
