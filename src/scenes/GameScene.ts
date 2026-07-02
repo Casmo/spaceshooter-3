@@ -25,6 +25,7 @@ import {
 import { WaveManager } from "../game/WaveManager";
 import { StarPool } from "../game/StarPool";
 import { EffectsPool } from "../game/EffectsPool";
+import { DebrisPool } from "../game/DebrisPool";
 import { Leveling } from "../game/Leveling";
 import { Upgrades, UPGRADE_DEFS, type UpgradeDef } from "../game/upgrades";
 import { emptyRun, loadStats, recordRun, type RunStats } from "../game/Stats";
@@ -47,6 +48,8 @@ export class GameScene implements Scene {
   private readonly enemies = new EnemyPool();
   private readonly stars = new StarPool();
   private readonly effects = new EffectsPool();
+  // Debris chunks pop via the effects pool, so it must exist first (field order).
+  private readonly debris = new DebrisPool(this.effects);
   private readonly bullets: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
@@ -157,6 +160,8 @@ export class GameScene implements Scene {
 
     this.view.addChild(this.starfield.view);
     this.view.addChild(this.enemies.view);
+    // Debris sits behind the stars/bullets/player — wreckage in the back.
+    this.view.addChild(this.debris.view);
     this.view.addChild(this.stars.view);
 
     this.bullets = new ProjectilePool(
@@ -291,6 +296,7 @@ export class GameScene implements Scene {
     this.bullets.update(dt);
     this.enemyBullets.update(dt);
     this.effects.update(dt);
+    this.debris.update(dt);
     this.emitTrails(dt);
 
     this.resolveBulletHits();
@@ -624,7 +630,13 @@ export class GameScene implements Scene {
     // (detonateExplosive); every other enemy gets the standard kill boom. Both
     // draw from the explosion variant pool (ADR-0014).
     if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
-    else playSound("explosion", 0.4);
+    else {
+      playSound("explosion", 0.4);
+      // Debris on "clean" kills only — Asteroids already fragment into smaller
+      // Asteroids (handleDeath above), so they don't also shed debris chunks.
+      if (enemy.kind !== "asteroid")
+        this.debris.spawn(enemy.x, enemy.y, enemy.sprite.scale.x);
+    }
   }
 
   /**

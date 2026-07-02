@@ -72,11 +72,13 @@ export type AssetAlias =
   | "cursor"
   | "explosion";
 
-/** Aliases backed by an animation sheet (resolved via getFrames()). */
+/** Aliases backed by a multi-frame sheet (resolved via getFrames()) — either an
+ *  animation's frames or, for "debris", a set of interchangeable variant cuts. */
 export type FrameAlias =
   | "ship"
   | "star"
   | "bomber"
+  | "debris"
   | "explosion"
   | "explosionBig"
   | "explosionSmall";
@@ -176,6 +178,23 @@ export async function loadAssets(): Promise<void> {
   const bomberFrames = sliceFrames(Assets.get("bomber"), 16, 5);
   frameSets.set("bomber", bomberFrames);
   textures.set("bomber", bomberFrames[0]);
+
+  // Debris chunks: six irregular fragment cuts from the atlas (not an even
+  // slice), each by its own bounding box. DebrisPool picks one at random per
+  // chunk. The Warden's Shield Node is a seventh cut from the same source above.
+  const debrisSrc = (Assets.get("debris") as Texture).source;
+  const debrisRects = [
+    new Rectangle(71, 6, 51, 57),
+    new Rectangle(133, 9, 52, 50),
+    new Rectangle(209, 18, 30, 28),
+    new Rectangle(280, 24, 16, 16),
+    new Rectangle(337, 14, 29, 36),
+    new Rectangle(402, 23, 26, 19),
+  ];
+  frameSets.set(
+    "debris",
+    debrisRects.map((frame) => new Texture({ source: debrisSrc, frame })),
+  );
 
   // Asteroids: one 12-frame sheet (64x64); pick three distinct sizes.
   const asteroidFrames = sliceFrames(Assets.get("asteroids"), 64, 12);

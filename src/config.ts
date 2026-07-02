@@ -545,6 +545,42 @@ export const STAR = {
   blinkBefore: 1.5,
 } as const;
 
+/** Debris: the cosmetic ship-fragment shower flung out on a "clean" enemy kill
+ *  (Debris / Debris chunk in CONTEXT.md). No collision, no damage, and silent —
+ *  the single kill boom is the only death sound. Not spawned by the Mine/Bomber
+ *  (they detonate), Asteroids (they split), or a shot-off Shield Node. */
+export const DEBRIS = {
+  /** Chunk count derives from the dead enemy's sprite scale: round(scale /
+   *  countDivisor), jittered by ±countJitter, clamped to [minCount, maxCount].
+   *  So a Swarmer (2x) sheds ~1-2 and a Boss (6x) ~4-5 — no per-type table. */
+  countDivisor: 1.5,
+  countJitter: 1,
+  minCount: 1,
+  maxCount: 5,
+  /** Chunk sprite scale as a fraction of the source enemy's scale (fragments
+   *  read as clearly smaller than the ship they came from). */
+  scaleFactor: 0.5,
+  /** Initial launch speed range (virtual px/s), before ease-out damping. */
+  minSpeed: 150,
+  maxSpeed: 350,
+  /** Velocity damping per second: chunks ease out to a near-stop before they
+   *  pop. Lower = the ease takes longer. Total drift distance ≈ speed / damping. */
+  damping: 1.8,
+  /** Tumble: random angular speed range (rad/s); rotation sign is randomized. */
+  minSpin: 0.5,
+  maxSpin: 3,
+  /** Per-chunk life range (seconds) before the end-of-life pop. */
+  minLife: 1,
+  maxLife: 2,
+  /** Alpha a chunk fades to by end of life (a slight fade, not to invisible). */
+  fadeTo: 0.5,
+  /** Scale of the end-of-life Explosion02 pop (the standard burst, half size). */
+  popScale: 0.5,
+  /** Safety cap on simultaneously live chunks; above it the oldest is recycled
+   *  (dropped without its pop) rather than growing the pool without bound. */
+  maxLive: 240,
+} as const;
+
 /** Upgrade rarity tiers and their card colors (low -> high). */
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export const RARITY_COLORS: Record<Rarity, number> = {

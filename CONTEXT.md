@@ -140,6 +140,14 @@ _Avoid_: gem, orb, XP drop.
 A small, untinted, decorative burst played at every player-bullet→enemy contact — including pierce, multishot, and Bounce-bullet hits, and whether or not the hit kills. Deals no damage and carries no Modifier meaning. Fixed native size, plays once. It carries the throttled impact sound (the `bulletHit` SFX), but is otherwise visual flair. Distinct from the Explosive Modifier's larger damaging burst, which stacks on top of it on Explosive hits. (`Explosion01-Sheet`)
 _Avoid_: explosion, blast (reserve those for the Explosive Modifier's burst).
 
+**Debris**:
+The decorative shower of ship fragments flung out when a "clean" enemy is destroyed — Swarmer, Gunner, Warden, Station, Mini-boss, and Boss. Explicitly *not* the Mine or Bomber (they detonate their own blast) nor the Asteroid (it splits into smaller Asteroids), and *not* a shot-off Shield Node (only whole-enemy deaths). A handful of Debris chunks scatter from the death point, drift to rest, and each pops into a small explosion. Purely cosmetic — no collision, no damage, and silent (the single kill boom is the only death sound). Distinct from the Hit Spark (bullet-impact flash) and the Explosive/Mine blast (which deals damage). (`Debris-Sheet`)
+_Avoid_: wreckage, gibs, particles.
+
+**Debris chunk**:
+One flying piece of Debris: a random one of the sheet's six fragment shapes, drawn at roughly half the source enemy's sprite scale, launched in a fully random 360° direction and eased to a near-stop over a 1–2s life while slowly tumbling. It stays fully opaque the whole drift, then vanishes into its end-of-life pop — the standard Explosion02 burst at scale 0.5, untinted and silent. How many spawn scales with the dead enemy's size (bigger enemy → more chunks, up to five).
+_Avoid_: shard, fragment (both reserved near Bounce-bullets), shrapnel.
+
 **HP Bar**:
 A thin flat-red bar that appears above an enemy the instant it takes its first damage and tracks its remaining HP as a fill length — no number, the length *is* the percentage. Hidden while the enemy is at full HP (so a one-shot kill never shows one); once shown it never fades or hides until the enemy dies or flees. Its width matches the enemy's (unrotated) sprite width with a fixed thin height, and it stays horizontal above a spinning Asteroid or Mine. Applies to *every* enemy kind, the Boss included. Distinct from the player's HUD HP bar.
 _Avoid_: health bar, lifebar, the player's HP bar (that's the HUD).
