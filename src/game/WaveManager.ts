@@ -1,11 +1,15 @@
 import { WAVES, MINE, WARDEN, BOMBER, SPACESTATION } from "../config";
-import { EnemyPool, type WaveMods } from "./EnemyPool";
+import type { EnemyPool, WaveMods } from "./EnemyPool";
 
 type SpawnKind =
   | "swarmer"
   | "gunner"
   | "asteroid"
   | "miniboss"
+  // A per-wave mini-boss from miniBossEveryWaveFrom on: spawns identically to a
+  // "miniboss" but with NO per-appearance HP bonus (scales on hpMult only), so a
+  // never-fleeing capstone on every wave can't outgrow the player. See ADR-0016.
+  | "minibossFlat"
   | "boss"
   | "mine"
   | "warden"
@@ -99,20 +103,29 @@ export class WaveManager {
     const queue: SpawnKind[] = [];
     for (let i = 0; i < budget; i++) queue.push(this.pickKind(n));
 
-    // Milestone capstones: a Boss anchors every bossEvery wave (overriding the
-    // mini-boss there); a mini-boss anchors the remaining every-miniBossEvery
-    // waves. The capstone is spliced into the budget mid-wave (it no longer
-    // replaces the budget). This is the single place to change which capstone a
-    // milestone spawns.
-    const capstone: SpawnKind | null =
-      n % WAVES.bossEvery === 0
-        ? "boss"
-        : n % WAVES.miniBossEvery === 0
-          ? "miniboss"
-          : null;
-    if (capstone) {
-      const at = Math.floor(budget * WAVES.capstoneSpawnFraction);
-      queue.splice(at, 0, capstone);
+    // Capstones spliced into the budget mid-wave (ADR-0011). A Boss anchors every
+    // bossEvery wave. Below the relentless threshold a mini-boss anchors the
+    // remaining every-miniBossEvery waves (5, 15) and the Boss stands alone. From
+    // miniBossEveryWaveFrom on the endgame turns relentless (ADR-0016): EVERY wave
+    // gets a mini-boss (the flat-HP variant), and a Boss wave carries both. This
+    // is the single place to change which capstones a wave spawns.
+    const relentless = n >= WAVES.miniBossEveryWaveFrom;
+    const capstones: SpawnKind[] = [];
+    if (n % WAVES.bossEvery === 0) {
+      capstones.push("boss");
+      if (relentless) capstones.push("minibossFlat");
+    } else if (relentless) {
+      capstones.push("minibossFlat");
+    } else if (n % WAVES.miniBossEvery === 0) {
+      capstones.push("miniboss");
+    }
+    // Spread multiple capstones across the wave (boss first, mini-boss later) so
+    // they don't descend on the same spawn tick. Splice from the last index back
+    // so earlier insertions don't shift later ones.
+    const points = [WAVES.capstoneSpawnFraction, 0.66];
+    for (let i = capstones.length - 1; i >= 0; i--) {
+      const at = Math.floor(budget * points[i]);
+      queue.splice(at, 0, capstones[i]);
     }
     return queue;
   }
@@ -152,6 +165,11 @@ export class WaveManager {
         break;
       case "miniboss":
         this.enemies.spawnMiniBoss(this.mods, this.miniBossAppearances++);
+        break;
+      case "minibossFlat":
+        // Per-wave endgame mini-boss (ADR-0016): appearance 0 => no per-appearance
+        // HP bonus, so it scales on the wave hpMult alone and stays killable.
+        this.enemies.spawnMiniBoss(this.mods, 0);
         break;
       case "boss":
         this.enemies.spawnBoss(this.mods, this.bossAppearances++);

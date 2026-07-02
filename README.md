@@ -10,7 +10,7 @@ runs play the same.
 ## Features
 
 - Stack bullet powerups — multishot, homing, pierce, explosive and more — into wild, run-defining combos
-- Hold out against endless, escalating waves, with a mini-boss waiting at every fifth one
+- Hold out against endless, escalating waves — a mini-boss waits at every fifth one, and past wave 25 the endgame turns relentless: a mini-boss in *every* wave
 - Level up mid-fight and choose upgrades across five rarity tiers
 - Pure roguelike: every run starts fresh, nothing to grind, everything to lose
 - Runs in any modern browser — no install, no download

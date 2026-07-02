@@ -78,14 +78,14 @@ The tier of an Upgrade type, shown by card color across five levels: **gray** = 
 ### Combat & waves
 
 **Wave**:
-A discrete batch of enemies with a defined spawn budget. Cleared by destroying (or letting flee) all its enemies; difficulty escalates each Wave. Runs are endless — Waves keep coming until game over.
+A discrete batch of enemies with a defined spawn budget. Cleared by destroying (or letting flee) all its enemies; difficulty escalates each Wave. Runs are endless — Waves keep coming until game over. From **Wave 25 the endgame turns relentless**: every Wave embeds a Mini-boss (see Mini-boss, ADR-0016), so a high-HP capstone is always on the field.
 
 **Breather**:
 The ~3-second enemy-free pause between Waves, announced by the "Wave N" banner. A deliberate rest beat in the interest curve.
 _Avoid_: intermission, break.
 
 **Mini-boss**:
-The single high-HP enemy that caps Waves on the every-5-but-not-10 cadence (5, 15, 25…) with a simple attack pattern. Guarantees a Star drop on death. Distinct from the Boss, which owns the every-10th Wave.
+The single high-HP enemy that caps Waves with a simple attack pattern. Below Wave 25 it appears on the every-5-but-not-10 cadence (5, 15). From **Wave 25 on it appears in *every* Wave** — including the every-10th Boss Waves, where the Boss and a Mini-boss now share the field (see ADR-0016). It settles at the top, strafes, and never flees: a Wave clears only when it is killed. Guarantees a Star drop on death. The early milestone Mini-bosses toughen per appearance; the per-Wave ones from Wave 25 scale on the Wave's HP multiplier alone (kept killable so a Run can't soft-lock). Distinct from the Boss, which owns the every-10th Wave.
 _Avoid_: boss (the Boss is its own, larger thing — see below).
 
 **Boss**:

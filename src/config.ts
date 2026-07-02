@@ -465,6 +465,12 @@ export const WAVES = {
   maxAsteroidSplit: 4,
   /** A mini-boss anchors every Nth wave (except boss waves — see bossEvery). */
   miniBossEvery: 5,
+  /** From this wave on the endgame turns relentless: EVERY wave embeds a mini-boss
+   *  (not just the every-Nth ones), and boss waves carry the Boss AND a mini-boss.
+   *  These per-wave mini-bosses scale on the wave hpMult only — no compounding
+   *  per-appearance HP bonus — so a never-fleeing capstone can't outgrow the
+   *  player's DPS and soft-lock the run. See ADR-0016. */
+  miniBossEveryWaveFrom: 25,
   /** A Boss anchors every Nth wave, replacing the mini-boss there. Must be a
    *  multiple of miniBossEvery so the boss check cleanly overrides it. */
   bossEvery: 10,
