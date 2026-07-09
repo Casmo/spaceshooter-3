@@ -15,6 +15,9 @@ export interface SpawnOptions {
   texture?: Texture;
   /** Sprite scale override; defaults to the pool scale (radius scales with it). */
   scale?: number;
+  /** Sprite rotation (radians); defaults to 0. The Missile is drawn rotated 180°
+   *  so its downward-pointing art points up (ADR-0018). */
+  rotation?: number;
   /** Lifetime in seconds; <= 0 means it lives until it leaves the field. */
   life?: number;
   /** Homing turn rate (rad/s); 0 = no homing. Steered externally. */
@@ -39,6 +42,9 @@ export class Projectile {
   active = false;
   /** Collision radius in virtual px (set from the sprite size at spawn). */
   radius = 0;
+  /** The y this projectile was spawned at. The Missile ramps its speed by how
+   *  far it has climbed from here (ADR-0018); unused by straight-line shots. */
+  originY = 0;
   damage = 0;
   pierceRemaining = 0;
   /** Lifetime remaining (s); <= 0 means no lifetime limit. */
@@ -132,6 +138,8 @@ export class ProjectilePool {
     p.active = true;
     p.sprite.visible = true;
     p.sprite.position.set(o.x, o.y);
+    p.sprite.rotation = o.rotation ?? 0;
+    p.originY = o.y;
     p.vx = o.vx;
     p.vy = o.vy;
     p.damage = o.damage ?? 0;

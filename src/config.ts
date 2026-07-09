@@ -90,6 +90,41 @@ export const WEAPON = {
   bulletRadiusFactor: 0.8,
 } as const;
 
+/** Missile Launcher: a second, autonomous weapon unlocked by the "Missiles"
+ *  Upgrade (ADR-0018). Independent of the gun — it fires one Missile straight up
+ *  every `fireInterval` seconds *while the trigger is held* (never idle-fires,
+ *  never affected by Fire Rate or any bullet Modifier), and detonates on contact
+ *  with any enemy for a fixed-radius AoE (damage scales per Upgrade level). The
+ *  Missile art (Missile.png) is an enemy missile pointing down, so it's drawn
+ *  rotated 180deg to point up. Player is immune to the blast (unlike the enemy
+ *  Mine/Bomber detonation, which this deliberately mirrors in reverse). */
+export const MISSILE = {
+  /** Display scale for the 11x43 sprite (2 base × 0.7 = a touch smaller). */
+  scale: 1.4,
+  /** Seconds between launches while the trigger is held. Fixed — not Fire Rate. */
+  fireInterval: 1,
+  /** Damage dealt to every enemy within the blast on detonation. Level 1 value;
+   *  each further "Missiles" Upgrade adds `damagePerLevel`. */
+  baseDamage: 40,
+  damagePerLevel: 25,
+  /** Blast radius (virtual px). Fixed — only damage scales with level. */
+  blastRadius: 110,
+  /** Straight-up flight: starts slow, ramps linearly by distance travelled to
+   *  `topSpeed` at `rampDistance` px climbed, then holds (virtual px/s). */
+  startSpeed: 120,
+  topSpeed: 1500,
+  rampDistance: VIRTUAL_HEIGHT / 3,
+  /** Collision radius as a fraction of the sprite half-width. Generous relative
+   *  to the thin sprite so a launch reliably connects. */
+  radiusFactor: 1,
+  /** Native half-height of an Explosion04 frame (480/2) — its full-scale radius.
+   *  The blast burst is scaled blastRadius/explosion04Half so its art footprint
+   *  matches the damage radius (the "art is the hitbox" pattern). Explosion04 is
+   *  the same sheet the Mine detonation uses; the Missile blast just sizes it to
+   *  its own (smaller) radius. */
+  explosion04Half: 240,
+} as const;
+
 /** Swarmer enemy (insect-1): fast, low HP, contact-only. */
 export const SWARMER = {
   scale: 2,
@@ -347,8 +382,11 @@ export const WARDEN = {
   nodeCount: 3,
   /** Per-Node HP (scales with the wave hpMult, like body HP). */
   nodeHp: 30,
-  /** Distance (virtual px) from the body centre to each orbiting Node. */
-  orbitRadius: 80,
+  /** Distance (virtual px) from the body centre to each orbiting Node. Widened
+   *  80->120 so a Missile that detonates on a blocking Node (110px blast) lands
+   *  just short of the body — the Shield protects the Warden by geometry, no
+   *  special-case code (ADR-0018). Also spreads the gun's gaps a touch wider. */
+  orbitRadius: 120,
   /** Node sprite scale and its collision radius as a fraction of half-width. */
   nodeScale: 2,
   nodeRadiusFactor: 0.6,
@@ -614,6 +652,9 @@ export const UPGRADES = {
   // Capped at 3 so a long run can't trend toward immortality (starts at 3 lives).
   extraLife: { cap: 3, weight: 2, rarity: "epic" },
   pickupRange: { cap: 5, weight: 12, rarity: "common", amount: 120 },
+  // The Missile Launcher (ADR-0018): a second, independent weapon. First pick
+  // unlocks it; every later pick adds Missile damage. Unlimited, epic (weight 2).
+  missiles: { cap: 0, weight: 2, rarity: "epic" },
 } as const;
 
 /** Bullet-modifier mechanics. All modifiers stack orthogonally on the one gun. */

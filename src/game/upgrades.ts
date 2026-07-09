@@ -89,6 +89,18 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
       p.pickupRange += UPGRADES.pickupRange.amount;
     },
   },
+  {
+    id: "missiles",
+    name: "Missiles",
+    description:
+      "Fires a missile every second that explodes for area damage (+damage each level)",
+    rarity: UPGRADES.missiles.rarity,
+    cap: UPGRADES.missiles.cap,
+    weight: UPGRADES.missiles.weight,
+    apply: (p) => {
+      p.missileLevel += 1;
+    },
+  },
   // --- Bullet modifiers (#6a). The rest (Homing/Explosive/Burn/Bounce) land in #6b. ---
   {
     id: "multishot",

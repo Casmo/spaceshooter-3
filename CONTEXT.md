@@ -53,8 +53,16 @@ The paused, 3-card choice shown on Level-up. Cards are a weighted-random draw of
 _Avoid_: level screen.
 
 **Modifier**:
-A bullet Upgrade that changes how the single weapon fires or what its projectiles do. The seven: Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce. Modifiers stack orthogonally — their effects combine rather than replace.
-_Avoid_: weapon, gun (there is only one weapon).
+A bullet Upgrade that changes how the single *main gun* fires or what its projectiles do. The seven: Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce. Modifiers stack orthogonally — their effects combine rather than replace. Modifiers touch only the main gun — never the Missile Launcher, which is its own weapon.
+_Avoid_: weapon, gun (the main gun is the *only gun* — but the Missile Launcher is a second, non-gun weapon).
+
+**Missile Launcher**:
+A second, autonomous weapon (distinct from the main gun and its Modifiers), unlocked by the epic Upgrade shown on the card as **"Missiles"**. While the fire button is held it launches one Missile straight up every second on its own fixed clock — it does not auto-fire when idle, and its cadence is independent of the gun's Fire Rate. The first pick of the Upgrade unlocks it; every later pick raises Missile damage only (unlimited). No bullet Modifier affects it.
+_Avoid_: gun (the gun is the main weapon — the Launcher is separate), auto-fire (it is trigger-gated), turret.
+
+**Missile**:
+The projectile fired by the Missile Launcher: flies straight up and detonates on contact with an enemy, dealing area-of-effect damage to every enemy in the blast (see Missile Explosion). Harmless to the player. Damage rises per Missile Launcher Upgrade level; the blast radius is fixed. Distinct from a main-gun bullet (a Missile is not affected by Modifiers and carries its own AoE).
+_Avoid_: bullet, rocket, the enemy Mine/Bomber blast (those hurt the player; a Missile never does).
 
 **Bounce**:
 The Modifier that, on every enemy a bullet hits, spawns one Bounce-bullet. The Bounce level is a generational depth, not a count: each Bounce-bullet spawns one of its own a generation shallower, and so on until the depth runs out. A higher level only makes the chain go deeper — it never spawns more than one Bounce-bullet per hit.

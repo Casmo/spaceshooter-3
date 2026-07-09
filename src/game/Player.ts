@@ -2,6 +2,7 @@ import { Sprite, type Texture } from "pixi.js";
 import {
   PLAYER,
   WEAPON,
+  MISSILE,
   MODIFIERS,
   MODIFIER_FX,
   VIRTUAL_WIDTH,
@@ -44,6 +45,11 @@ export class Player {
   private targetY: number = PLAYER.startY;
   /** Bullet-modifier levels; mutated by the upgrade system, read when firing. */
   readonly modifiers: WeaponModifiers = createModifiers();
+  /** Missile Launcher level (0 = not unlocked). First "Missiles" Upgrade unlocks
+   *  it and starts the 1s launch clock; each later level adds Missile damage. */
+  missileLevel = 0;
+  /** Countdown to the next Missile launch (ADR-0018). */
+  private missileTimer = 0;
   /** Total projectiles fired by the weapon this run (for run stats). */
   bulletsFired = 0;
 
@@ -59,7 +65,10 @@ export class Player {
   /** Banking frames: 0 = hard-left .. 2 = centre .. 4 = hard-right. */
   private readonly bankFrames: Texture[] = getFrames("ship");
 
-  constructor(private readonly bullets: ProjectilePool) {
+  constructor(
+    private readonly bullets: ProjectilePool,
+    private readonly missiles: ProjectilePool,
+  ) {
     this.sprite = new Sprite(getTexture("ship"));
     this.sprite.anchor.set(0.5);
     this.sprite.scale.set(PLAYER.scale);
@@ -83,9 +92,17 @@ export class Player {
     return this.gameOver;
   }
 
+  /** Damage each Missile deals in its blast (only meaningful once unlocked). */
+  get missileDamage(): number {
+    return (
+      MISSILE.baseDamage + (this.missileLevel - 1) * MISSILE.damagePerLevel
+    );
+  }
+
   update(dt: number, firing: boolean): void {
     this.move(dt);
     this.shoot(dt, firing);
+    this.fireMissiles(dt, firing);
     this.tickInvulnerability(dt);
   }
 
@@ -236,6 +253,29 @@ export class Player {
         bounceRemaining,
       });
     }
+  }
+
+  /**
+   * Missile Launcher (ADR-0018): once unlocked, launch one Missile straight up
+   * every MISSILE.fireInterval seconds *while the trigger is held*. Mirrors the
+   * gun's timer (counts down always, fires only when held), so the first Missile
+   * after a lull launches immediately, but tap-firing can't beat the interval
+   * because the timer resets to the full interval on each launch. Independent of
+   * Fire Rate and untouched by any bullet Modifier.
+   */
+  private fireMissiles(dt: number, firing: boolean): void {
+    if (this.missileLevel <= 0) return;
+    this.missileTimer -= dt;
+    if (!firing || this.missileTimer > 0) return;
+    this.missileTimer = MISSILE.fireInterval;
+    this.missiles.spawn({
+      x: this.sprite.x,
+      y: this.sprite.y - this.halfHeight,
+      vx: 0,
+      vy: -MISSILE.startSpeed,
+      damage: this.missileDamage,
+      rotation: Math.PI, // the art points down; flip it to point up
+    });
   }
 
   private tickInvulnerability(dt: number): void {

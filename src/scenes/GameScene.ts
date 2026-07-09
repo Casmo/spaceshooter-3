@@ -1,6 +1,7 @@
 import { Container, Text, type FederatedPointerEvent } from "pixi.js";
 import {
   WEAPON,
+  MISSILE,
   ENEMY_BULLET,
   STAR,
   XP,
@@ -51,6 +52,7 @@ export class GameScene implements Scene {
   // Debris chunks pop via the effects pool, so it must exist first (field order).
   private readonly debris = new DebrisPool(this.effects);
   private readonly bullets: ProjectilePool;
+  private readonly missiles: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
   private readonly waves: WaveManager;
@@ -171,6 +173,15 @@ export class GameScene implements Scene {
     );
     this.view.addChild(this.bullets.view);
 
+    // Missile Launcher's projectiles: a dedicated pool (ADR-0018). Its own
+    // texture/scale/radius; GameScene ramps each Missile's speed and detonates it.
+    this.missiles = new ProjectilePool(
+      getTexture("missile"),
+      MISSILE.scale,
+      MISSILE.radiusFactor,
+    );
+    this.view.addChild(this.missiles.view);
+
     this.enemyBullets = new ProjectilePool(
       getTexture("enemyBullet"),
       ENEMY_BULLET.scale,
@@ -178,7 +189,7 @@ export class GameScene implements Scene {
     );
     this.view.addChild(this.enemyBullets.view);
 
-    this.player = new Player(this.bullets);
+    this.player = new Player(this.bullets, this.missiles);
     this.view.addChild(this.player.sprite);
 
     this.view.addChild(this.effects.view);
@@ -294,12 +305,15 @@ export class GameScene implements Scene {
 
     this.steerHoming(dt);
     this.bullets.update(dt);
+    this.rampMissiles();
+    this.missiles.update(dt);
     this.enemyBullets.update(dt);
     this.effects.update(dt);
     this.debris.update(dt);
     this.emitTrails(dt);
 
     this.resolveBulletHits();
+    this.resolveMissileHits();
     this.resolveEnemyBulletHits();
     this.resolveContactHits();
 
@@ -462,6 +476,78 @@ export class GameScene implements Scene {
     const r2 = radius * radius;
     for (const enemy of this.enemies.activeEnemies) {
       if (!enemy.active || enemy === exclude) continue;
+      const dx = enemy.x - x;
+      const dy = enemy.y - y;
+      if (dx * dx + dy * dy <= r2 && enemy.takeDamage(damage)) {
+        this.destroyEnemy(enemy);
+      }
+    }
+  }
+
+  /**
+   * Ramp each live Missile's speed by how far it has climbed (ADR-0018): linear
+   * from MISSILE.startSpeed up to MISSILE.topSpeed over the first
+   * MISSILE.rampDistance px, then held. Missiles fly straight up, so only vy is
+   * touched. Runs before missiles.update applies the new velocity.
+   */
+  private rampMissiles(): void {
+    for (const missile of this.missiles.activeProjectiles) {
+      if (!missile.active) continue;
+      const climbed = missile.originY - missile.y; // up = positive
+      const t = Math.min(1, Math.max(0, climbed / MISSILE.rampDistance));
+      missile.vy = -(
+        MISSILE.startSpeed +
+        (MISSILE.topSpeed - MISSILE.startSpeed) * t
+      );
+    }
+  }
+
+  /**
+   * A Missile detonates on the first solid thing in its path (ADR-0018): a live
+   * Shield Node (which blocks it — B2) or any enemy body. The blast is centred on
+   * the Missile, so which enemy it struck doesn't matter — detonateMissile deals
+   * the AoE to every body in range.
+   */
+  private resolveMissileHits(): void {
+    for (const missile of this.missiles.activeProjectiles) {
+      if (!missile.active) continue;
+      if (this.missileHitsSolid(missile)) this.detonateMissile(missile);
+    }
+  }
+
+  /** True if the Missile overlaps any enemy body or any live Shield Node. */
+  private missileHitsSolid(missile: Projectile): boolean {
+    for (const enemy of this.enemies.activeEnemies) {
+      if (!enemy.active) continue;
+      if (enemy.hasLiveShield) {
+        for (const node of enemy.shieldNodes) {
+          if (node.alive && circlesOverlap(missile, node)) return true;
+        }
+      }
+      if (circlesOverlap(missile, enemy)) return true;
+    }
+    return false;
+  }
+
+  /** Detonate a Missile: play its blast and consume it. */
+  private detonateMissile(missile: Projectile): void {
+    this.explodeMissile(missile.x, missile.y, missile.damage);
+    missile.kill();
+  }
+
+  /**
+   * Missile Explosion (ADR-0018): a fixed-radius AoE dealing `damage` to every
+   * enemy body within MISSILE.blastRadius — including the struck enemy (a Missile
+   * has no separate direct hit), never Shield Nodes, and never the player. The
+   * Explosion04 burst is scaled so its art footprint matches the blast radius.
+   */
+  private explodeMissile(x: number, y: number, damage: number): void {
+    playSound("explosion", 0.5);
+    const scale = MISSILE.blastRadius / MISSILE.explosion04Half;
+    this.effects.explode(x, y, scale, 0xffffff, "missileExplosion");
+    const r2 = MISSILE.blastRadius * MISSILE.blastRadius;
+    for (const enemy of this.enemies.activeEnemies) {
+      if (!enemy.active) continue;
       const dx = enemy.x - x;
       const dy = enemy.y - y;
       if (dx * dx + dy * dy <= r2 && enemy.takeDamage(damage)) {

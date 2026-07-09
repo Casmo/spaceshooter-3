@@ -33,6 +33,9 @@ const MANIFEST = {
   // the 3rd chunk (31x31 at 210,19) — not an even-frame slice.
   debris: "./assets/SpaceShooter/Enemies/Debris-Sheet.png",
   bullet: "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile04.png",
+  // Player Missile (11x43): an enemy missile sprite, drawn rotated 180deg to
+  // point up (ADR-0018).
+  missile: "./assets/SpaceShooter/Enemies/Missile.png",
   enemyBullet:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
   explosion:
@@ -41,6 +44,12 @@ const MANIFEST = {
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion04-Sheet.png",
   explosionSmall:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion01-Sheet.png",
+  // Missile Explosion: the player Missile's detonation burst. Reuses Explosion04
+  // (the Mine's blast sheet, 11 frames of 480x480) under its own alias so the
+  // Missile blast can be resized/swapped independently. Pixi dedupes by URL, so
+  // sharing the file with `explosionBig` costs no extra load.
+  missileExplosion:
+    "./assets/SpaceShooter/ProjectilesAndExplosions/Explosion04-Sheet.png",
   star: "./assets/SpaceShooter/Powerup/Credits-Sheet.png",
   // Parallax background star layer.
   starsA: "./assets/SpaceShooter/Backgrounds/BG_Stars1.png",
@@ -65,6 +74,7 @@ export type AssetAlias =
   | "asteroidMedium"
   | "asteroidSmall"
   | "bullet"
+  | "missile"
   | "enemyBullet"
   | "star"
   | "smoke"
@@ -81,7 +91,8 @@ export type FrameAlias =
   | "debris"
   | "explosion"
   | "explosionBig"
-  | "explosionSmall";
+  | "explosionSmall"
+  | "missileExplosion";
 
 const textures = new Map<AssetAlias, Texture>();
 const frameSets = new Map<FrameAlias, Texture[]>();
@@ -142,6 +153,7 @@ export async function loadAssets(): Promise<void> {
     }),
   );
   textures.set("bullet", Assets.get("bullet"));
+  textures.set("missile", Assets.get("missile"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
   textures.set("starsA", Assets.get("starsA"));
   textures.set("cursor", Assets.get("cursor"));
@@ -171,6 +183,14 @@ export async function loadAssets(): Promise<void> {
   frameSets.set(
     "explosionSmall",
     sliceFrames(Assets.get("explosionSmall"), 32, 5),
+  );
+
+  // Missile Explosion: the player Missile's detonation, 11 frames (480x480). At
+  // native scale its half-height (240) is its full-scale blast radius; GameScene
+  // scales it to match MISSILE.blastRadius (ADR-0018).
+  frameSets.set(
+    "missileExplosion",
+    sliceFrames(Assets.get("missileExplosion"), 480, 11),
   );
 
   // Bomber: a 5-frame animation sheet (16x16). The Enemy cycles these in
