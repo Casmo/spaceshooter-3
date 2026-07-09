@@ -632,10 +632,15 @@ export class GameScene implements Scene {
     if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
     else {
       playSound("explosion", 0.4);
-      // Debris on "clean" kills only — Asteroids already fragment into smaller
-      // Asteroids (handleDeath above), so they don't also shed debris chunks.
-      if (enemy.kind !== "asteroid")
+      // Debris + Kill Burst on "clean" kills only — Asteroids already fragment
+      // into smaller Asteroids (handleDeath above), so they don't also shed
+      // debris chunks or flash a central burst. The Kill Burst is the central
+      // cosmetic flash (footprint-sized, untinted, silent); Debris is the
+      // fragment shower around it. See ADR-0017.
+      if (enemy.kind !== "asteroid") {
         this.debris.spawn(enemy.x, enemy.y, enemy.sprite.scale.x);
+        this.effects.explode(enemy.x, enemy.y, enemy.sprite.scale.x);
+      }
     }
   }
 
