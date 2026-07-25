@@ -24,6 +24,7 @@ import {
   type EnemyKind,
 } from "../game/EnemyPool";
 import { WaveManager } from "../game/WaveManager";
+import { DroneSwarm, type DroneContext } from "../game/DroneSwarm";
 import { StarPool } from "../game/StarPool";
 import { EffectsPool } from "../game/EffectsPool";
 import { DebrisPool } from "../game/DebrisPool";
@@ -55,6 +56,8 @@ export class GameScene implements Scene {
   private readonly missiles: ProjectilePool;
   private readonly enemyBullets: ProjectilePool;
   private readonly player: Player;
+  // Drones (ADR-0019): orbiting-companion beam weapon, gated on player.droneLevel.
+  private readonly drones = new DroneSwarm();
   private readonly waves: WaveManager;
   private readonly leveling = new Leveling(
     XP.baseThreshold,
@@ -95,6 +98,15 @@ export class GameScene implements Scene {
         tint: damageTierColor(damage),
       });
     },
+  };
+
+  /** Per-frame inputs for the DroneSwarm; x/y/level/enemies refreshed each tick. */
+  private readonly droneCtx: DroneContext = {
+    x: 0,
+    y: 0,
+    level: 0,
+    enemies: [],
+    destroyEnemy: (enemy) => this.destroyEnemy(enemy),
   };
 
   // Input state. Steering is relative (ADR-0006): raw mouse-movement deltas
@@ -191,6 +203,9 @@ export class GameScene implements Scene {
 
     this.player = new Player(this.bullets, this.missiles);
     this.view.addChild(this.player.sprite);
+
+    // Drones orbit the ship and beam over the enemies — above the player sprite.
+    this.view.addChild(this.drones.view);
 
     this.view.addChild(this.effects.view);
 
@@ -307,6 +322,13 @@ export class GameScene implements Scene {
     this.bullets.update(dt);
     this.rampMissiles();
     this.missiles.update(dt);
+    // Drones target/beam/damage on their own (autonomous); enemy positions are
+    // already current from enemies.update above. Kills route through destroyEnemy.
+    this.droneCtx.x = this.player.x;
+    this.droneCtx.y = this.player.y;
+    this.droneCtx.level = this.player.droneLevel;
+    this.droneCtx.enemies = this.enemies.activeEnemies;
+    this.drones.update(dt, this.droneCtx);
     this.enemyBullets.update(dt);
     this.effects.update(dt);
     this.debris.update(dt);

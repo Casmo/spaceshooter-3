@@ -36,6 +36,9 @@ const MANIFEST = {
   // Player Missile (11x43): an enemy missile sprite, drawn rotated 180deg to
   // point up (ADR-0018).
   missile: "./assets/SpaceShooter/Enemies/Missile.png",
+  // Drone (ADR-0019): the orbiting companion's body. A small enemy gun sprite,
+  // drawn rotated to aim at the drone's target (its art points down).
+  drone: "./assets/SpaceShooter/Enemies/Gun.png",
   enemyBullet:
     "./assets/SpaceShooter/ProjectilesAndExplosions/Projectile03.png",
   explosion:
@@ -75,6 +78,7 @@ export type AssetAlias =
   | "asteroidSmall"
   | "bullet"
   | "missile"
+  | "drone"
   | "enemyBullet"
   | "star"
   | "smoke"
@@ -154,6 +158,7 @@ export async function loadAssets(): Promise<void> {
   );
   textures.set("bullet", Assets.get("bullet"));
   textures.set("missile", Assets.get("missile"));
+  textures.set("drone", Assets.get("drone"));
   textures.set("enemyBullet", Assets.get("enemyBullet"));
   textures.set("starsA", Assets.get("starsA"));
   textures.set("cursor", Assets.get("cursor"));

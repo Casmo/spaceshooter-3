@@ -50,6 +50,10 @@ export class Player {
   missileLevel = 0;
   /** Countdown to the next Missile launch (ADR-0018). */
   private missileTimer = 0;
+  /** Drone count (ADR-0019): +1 per "Drones" Upgrade, capped at DRONE.maxCount.
+   *  The drones themselves live in the scene's DroneSwarm, which reconciles its
+   *  live count to this each frame — Player just holds the number. */
+  droneLevel = 0;
   /** Total projectiles fired by the weapon this run (for run stats). */
   bulletsFired = 0;
 

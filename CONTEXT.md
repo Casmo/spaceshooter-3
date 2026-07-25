@@ -41,7 +41,7 @@ The moment accumulated XP crosses the current threshold, triggering an Upgrade P
 ### Upgrades
 
 **Upgrade**:
-A persistent improvement chosen during a Run. One of 13 types across stats (Damage, HP, Engine, Fire Rate, Extra Life, Pickup Range) and the 7 bullet Modifiers. Each type has its own level cap, rarity weight, and per-level effect.
+A persistent improvement chosen during a Run. One of 14 types: stats (Damage, HP, Engine, Fire Rate, Extra Life, Pickup Range), the 6 bullet Modifiers, and the two independent weapons (Missile Launcher, Drones). Each type has its own level cap, rarity weight, and per-level effect.
 _Avoid_: powerup (reserve "powerup" for casual talk only), perk.
 
 **Engine**:
@@ -53,8 +53,8 @@ The paused, 3-card choice shown on Level-up. Cards are a weighted-random draw of
 _Avoid_: level screen.
 
 **Modifier**:
-A bullet Upgrade that changes how the single *main gun* fires or what its projectiles do. The seven: Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce. Modifiers stack orthogonally — their effects combine rather than replace. Modifiers touch only the main gun — never the Missile Launcher, which is its own weapon.
-_Avoid_: weapon, gun (the main gun is the *only gun* — but the Missile Launcher is a second, non-gun weapon).
+A bullet Upgrade that changes how the single *main gun* fires or what its projectiles do. The seven: Multishot, Spread, Pierce, Homing, Explosive, Burn, Bounce. Modifiers stack orthogonally — their effects combine rather than replace. Modifiers touch only the main gun — never the Missile Launcher or the Drones, each of which is its own weapon.
+_Avoid_: weapon, gun (the main gun is the *only gun* — the Missile Launcher and the Drones are separate, non-gun weapons).
 
 **Missile Launcher**:
 A second, autonomous weapon (distinct from the main gun and its Modifiers), unlocked by the epic Upgrade shown on the card as **"Missiles"**. While the fire button is held it launches one Missile straight up every second on its own fixed clock — it does not auto-fire when idle, and its cadence is independent of the gun's Fire Rate. The first pick of the Upgrade unlocks it; every later pick raises Missile damage only (unlimited). No bullet Modifier affects it.
@@ -63,6 +63,14 @@ _Avoid_: gun (the gun is the main weapon — the Launcher is separate), auto-fir
 **Missile**:
 The projectile fired by the Missile Launcher: flies straight up and detonates on contact with an enemy, dealing area-of-effect damage to every enemy in the blast (see Missile Explosion). Harmless to the player. Damage rises per Missile Launcher Upgrade level; the blast radius is fixed. Distinct from a main-gun bullet (a Missile is not affected by Modifiers and carries its own AoE).
 _Avoid_: bullet, rocket, the enemy Mine/Bomber blast (those hurt the player; a Missile never does).
+
+**Drone**:
+A third, autonomous weapon (distinct from the main gun and the Missile Launcher), unlocked by the legendary Upgrade shown on the card as **"Drones"**. Each Drone is a small indestructible craft that orbits the ship on a slow-rotating ring, floating and lagging as the ship moves. Fully on its own — no trigger, no Fire Rate, no Modifier — it fires a Drone Beam at the nearest enemy within its range. The Upgrade grants **one Drone per level** (cap 3) and nothing else; three Drones cover more of the field, that is the whole progression. See ADR-0019.
+_Avoid_: turret (it orbits, never camps), Missile Launcher (a separate weapon), companion/pet (it is a weapon), gun (the gun is the main weapon).
+
+**Drone Beam**:
+The continuous laser a Drone fires at its locked enemy. It deals damage every frame (not discrete shots) to that **one** target — never anything else the line crosses — and **ignores the Warden's Shield**, striking the body directly. Its damage starts small and climbs the longer the Beam holds the *same* target, with **no upper limit**; it **resets to the start** the instant that target dies or leaves range, then the Drone re-acquires the new nearest enemy and climbs again. The Beam visibly heats up with its damage — thicker and shifting cyan → white → orange-red — but that look tops out (cosmetic only) while the real damage keeps rising. This makes a Drone a tank-melter: fierce on a lone high-HP enemy, gentle on a fast-dying swarm.
+_Avoid_: Lock (reserve for Homing — a Drone re-acquires the nearest when its target is gone; a Homing Lock never re-locks), burst/shot (the Beam is continuous, not discrete), Burn (that is a bullet Modifier's DoT on the main gun).
 
 **Bounce**:
 The Modifier that, on every enemy a bullet hits, spawns one Bounce-bullet. The Bounce level is a generational depth, not a count: each Bounce-bullet spawns one of its own a generation shallower, and so on until the depth runs out. A higher level only makes the chain go deeper — it never spawns more than one Bounce-bullet per hit.

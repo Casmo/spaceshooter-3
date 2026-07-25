@@ -101,6 +101,18 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
       p.missileLevel += 1;
     },
   },
+  {
+    id: "drones",
+    name: "Drones",
+    description:
+      "An orbiting drone fires a laser that grows stronger the longer it burns (+1 drone per level)",
+    rarity: UPGRADES.drones.rarity,
+    cap: UPGRADES.drones.cap,
+    weight: UPGRADES.drones.weight,
+    apply: (p) => {
+      p.droneLevel += 1;
+    },
+  },
   // --- Bullet modifiers (#6a). The rest (Homing/Explosive/Burn/Bounce) land in #6b. ---
   {
     id: "multishot",

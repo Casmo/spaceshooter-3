@@ -32,23 +32,24 @@ The "≈ XP gained" column assumes most Stars are collected. It's a rough estima
 
 On each level-up you're offered 3 distinct, not-yet-maxed cards, drawn by **weight**. A rarity tier maps to a base draw weight (ADR-0009): **common 12 / uncommon 8 / rare 4 / epic 2 / legendary 1**; intra-tier exceptions are expressed via `cap`, not weight.
 
-The "Draw chance" below is each card's share of the full pool (total weight = 80, all cards available). As cards hit their cap and leave the pool, the remaining weights redistribute, so real-run chances drift upward.
+The "Draw chance" below is each card's share of the full pool (total weight = 81, all cards available). As cards hit their cap and leave the pool, the remaining weights redistribute, so real-run chances drift upward.
 
 | Powerup | Tier | Weight | Draw chance | Cap | Effect |
 |---------|------|-------:|------------:|----:|--------|
-| Shooting Power | common | 12 | 15.0% | ∞ | +6 bullet damage |
-| Engine | common | 12 | 15.0% | 10 | Faster, more responsive movement |
-| Rapid Fire | common | 12 | 15.0% | ∞ | ×0.95 shot cooldown |
-| Tractor Beam | common | 12 | 15.0% | 5 | +120 Star pickup range |
-| Piercing | uncommon | 8 | 10.0% | 5 | Bullets pass through +1 enemy |
-| Burn | uncommon | 8 | 10.0% | 10 | Hits apply damage-over-time |
-| Explosive | rare | 4 | 5.0% | 10 | Bullets explode on impact (AoE) |
-| Reinforced Hull | rare | 4 | 5.0% | ∞ | +25 max HP (and heal) |
+| Shooting Power | common | 12 | 14.8% | ∞ | +6 bullet damage |
+| Engine | common | 12 | 14.8% | 10 | Faster, more responsive movement |
+| Rapid Fire | common | 12 | 14.8% | ∞ | ×0.95 shot cooldown |
+| Tractor Beam | common | 12 | 14.8% | 5 | +120 Star pickup range |
+| Piercing | uncommon | 8 | 9.9% | 5 | Bullets pass through +1 enemy |
+| Burn | uncommon | 8 | 9.9% | 10 | Hits apply damage-over-time |
+| Explosive | rare | 4 | 4.9% | 10 | Bullets explode on impact (AoE) |
+| Reinforced Hull | rare | 4 | 4.9% | ∞ | +25 max HP (and heal) |
 | Homing | epic | 2 | 2.5% | 3 | Bullets curve toward nearest enemy |
 | Extra Life | epic | 2 | 2.5% | 3 | +1 life |
 | Missiles | epic | 2 | 2.5% | ∞ | Auto-launches an AoE missile every 1s (+damage/level) |
-| Multishot | legendary | 1 | 1.25% | 10 | +1 projectile per shot |
-| Bounce | legendary | 1 | 1.25% | 3 | Each hit spawns a full clone bullet; chains deeper per level |
+| Multishot | legendary | 1 | 1.2% | 10 | +1 projectile per shot |
+| Bounce | legendary | 1 | 1.2% | 3 | Each hit spawns a full clone bullet; chains deeper per level |
+| Drones | legendary | 1 | 1.2% | 3 | Orbiting drone fires a target-locked laser that ramps damage the longer it burns; +1 drone/level |
 
 The only in-world pickup is the **Star** (`Credits-Sheet.png`), a spinning coin worth 12 XP — see table 1 for its drop rules.
 

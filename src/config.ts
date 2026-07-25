@@ -125,6 +125,55 @@ export const MISSILE = {
   explosion04Half: 240,
 } as const;
 
+/** Drones (ADR-0019): the legendary orbiting-companion weapon. Small indestructible
+ *  craft (Gun.png) ride a slow-rotating ring around the ship, soft-following it
+ *  with a floaty lag, and each autonomously fires a continuous beam at the nearest
+ *  enemy within `range` of its OWN position. A beam's damage starts at `baseDps`
+ *  and climbs linearly (`rampPerSec`) the longer it holds the SAME target, with no
+ *  cap — it resets to `baseDps` the instant that target dies or leaves range, then
+ *  the drone re-acquires. One drone per Upgrade level (cap `maxCount`); nothing
+ *  else scales. No Fire Rate, no trigger, no bullet Modifier touches it. */
+export const DRONE = {
+  /** Max drones (= the Upgrade cap): one per level. */
+  maxCount: 3,
+  /** Display scale for the small Gun.png sprite. */
+  scale: 1.5,
+  /** Orbit ring radius from the ship centre (virtual px). */
+  orbitRadius: 120,
+  /** Ring rotation speed (rad/s) — slow, so the drones drift lazily around. */
+  orbitSpeed: 0.6,
+  /** Exponential-ease rate of each drone toward its orbit slot: lower = floatier
+   *  lag as the ship darts around (same smoothing idiom as player Steering). */
+  followResponse: 6,
+  /** Exponential-ease rate of the sprite's rotation toward its aim/neutral. */
+  aimResponse: 12,
+  /** Gun.png's art points DOWN (its facing is +y = angle π/2). Sprite rotation is
+   *  `aimAngle - artFacing`, which aligns the muzzle with the target. */
+  artFacing: Math.PI / 2,
+  /** A drone engages the nearest enemy within this distance of its own position. */
+  range: 400,
+  /** Beam damage on a fresh lock (dps), before any ramp. Deliberately gentle —
+   *  half a Missile's 40 — so a just-acquired target is barely singed. */
+  baseDps: 20,
+  /** Linear dps added per second the beam holds the same target. Uncapped. */
+  rampPerSec: 30,
+  /** Cosmetic only: the dps at which the beam reaches max width and the hottest
+   *  colour. Real damage keeps climbing past this; the LOOK just saturates. */
+  visualMaxDps: 300,
+  /** Beam core width (px) at a fresh lock … */
+  beamWidthMin: 3,
+  /** … and at/above visualMaxDps. */
+  beamWidthMax: 14,
+  /** Glow underlay width = core width × this (drawn low-alpha under the core). */
+  glowWidthMult: 3,
+  glowAlpha: 0.25,
+  coreAlpha: 0.95,
+  /** Heat gradient the beam shifts through as its dps climbs (cool → hot). */
+  colorCool: 0x33ccff, // cyan — freshly locked, weak
+  colorMid: 0xffffff, // white — spinning up
+  colorHot: 0xff5522, // orange-red — melting
+} as const;
+
 /** Swarmer enemy (insect-1): fast, low HP, contact-only. */
 export const SWARMER = {
   scale: 2,
@@ -655,6 +704,9 @@ export const UPGRADES = {
   // The Missile Launcher (ADR-0018): a second, independent weapon. First pick
   // unlocks it; every later pick adds Missile damage. Unlimited, epic (weight 2).
   missiles: { cap: 0, weight: 2, rarity: "epic" },
+  // Drones (ADR-0019): the orbiting-companion weapon. One drone per level, capped
+  // at 3 (= DRONE.maxCount). Legendary (weight 1). Its mechanics live in DRONE.
+  drones: { cap: DRONE.maxCount, weight: 1, rarity: "legendary" },
 } as const;
 
 /** Bullet-modifier mechanics. All modifiers stack orthogonally on the one gun. */
