@@ -105,7 +105,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     id: "drones",
     name: "Drones",
     description:
-      "An orbiting drone fires a laser that grows stronger the longer it burns (+1 drone per level)",
+      "An orbiting drone fires a laser that grows stronger the longer it keeps burning, and cools when idle (+1 drone per level)",
     rarity: UPGRADES.drones.rarity,
     cap: UPGRADES.drones.cap,
     weight: UPGRADES.drones.weight,

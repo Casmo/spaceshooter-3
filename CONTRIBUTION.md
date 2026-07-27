@@ -49,7 +49,7 @@ The "Draw chance" below is each card's share of the full pool (total weight = 81
 | Missiles | epic | 2 | 2.5% | ∞ | Auto-launches an AoE missile every 1s (+damage/level) |
 | Multishot | legendary | 1 | 1.2% | 10 | +1 projectile per shot |
 | Bounce | legendary | 1 | 1.2% | 3 | Each hit spawns a full clone bullet; chains deeper per level |
-| Drones | legendary | 1 | 1.2% | 3 | Orbiting drone fires a target-locked laser that ramps damage the longer it burns; +1 drone/level |
+| Drones | legendary | 1 | 1.2% | 3 | Orbiting drone fires a laser whose damage builds while it keeps firing (uncapped, kept across kills) and cools only while idle; +1 drone/level |
 
 The only in-world pickup is the **Star** (`Credits-Sheet.png`), a spinning coin worth 12 XP — see table 1 for its drop rules.
 

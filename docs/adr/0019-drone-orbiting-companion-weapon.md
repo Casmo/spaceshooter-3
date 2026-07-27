@@ -1,5 +1,7 @@
 # Drones: an orbiting companion weapon with a per-target ramping beam
 
+> **Amended by ADR-0020:** the ramp is no longer per-target. It is now per-*drone* **Heat** that persists through kills and target switches and decays exponentially only while the drone is idle. Everything else here — the orbit, independent per-drone targeting, the uncapped single-target shield-ignoring beam, the dedicated drone manager — still stands. The "charge tied to the target, not the firing state" option below was reversed; read ADR-0020 for why.
+
 The **Drones** Upgrade (legendary, "+1 drone per level", cap 3) adds a third independent weapon: small **Drones** that orbit the ship and, fully autonomously, fire a continuous **Drone Beam** at the nearest enemy within range. Each beam's damage climbs the longer it holds a single target and **resets when that target dies or leaves range**. It follows ADR-0018's "independent weapon" template but adds two things the game has never had — a *persistent entity that follows the player* and a *continuous beam*.
 
 ## Context

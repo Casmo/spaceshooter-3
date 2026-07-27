@@ -125,14 +125,19 @@ export const MISSILE = {
   explosion04Half: 240,
 } as const;
 
-/** Drones (ADR-0019): the legendary orbiting-companion weapon. Small indestructible
- *  craft (Gun.png) ride a slow-rotating ring around the ship, soft-following it
- *  with a floaty lag, and each autonomously fires a continuous beam at the nearest
- *  enemy within `range` of its OWN position. A beam's damage starts at `baseDps`
- *  and climbs linearly (`rampPerSec`) the longer it holds the SAME target, with no
- *  cap — it resets to `baseDps` the instant that target dies or leaves range, then
- *  the drone re-acquires. One drone per Upgrade level (cap `maxCount`); nothing
- *  else scales. No Fire Rate, no trigger, no bullet Modifier touches it. */
+/** Drones (ADR-0019, ADR-0020): the legendary orbiting-companion weapon. Small
+ *  indestructible craft (Gun.png) ride a slow-rotating ring around the ship,
+ *  soft-following it with a floaty lag, and each autonomously fires a continuous
+ *  beam at the nearest enemy within `range` of its OWN position.
+ *
+ *  Beam damage is `baseDps` + the drone's **Heat**, which climbs (`heatPerSec`,
+ *  uncapped) the whole time the beam fires — straight through kills and target
+ *  switches — and decays only while the drone is IDLE, with nothing in range. That
+ *  decay is exponential (`coolHalfLife`), so a scorching drone bleeds far faster
+ *  than a lukewarm one. Heat is per-drone, never shared or pooled.
+ *
+ *  One drone per Upgrade level (cap `maxCount`); nothing else scales. No Fire Rate,
+ *  no trigger, no bullet Modifier touches it. */
 export const DRONE = {
   /** Max drones (= the Upgrade cap): one per level. */
   maxCount: 3,
@@ -152,24 +157,37 @@ export const DRONE = {
   artFacing: Math.PI / 2,
   /** A drone engages the nearest enemy within this distance of its own position. */
   range: 400,
-  /** Beam damage on a fresh lock (dps), before any ramp. Deliberately gentle —
-   *  half a Missile's 40 — so a just-acquired target is barely singed. */
+  /** Beam damage at zero Heat (dps) — the floor a stone-cold drone deals.
+   *  Deliberately gentle — half a Missile's 40 — so a fresh drone barely singes. */
   baseDps: 20,
-  /** Linear dps added per second the beam holds the same target. Uncapped. */
-  rampPerSec: 30,
-  /** Cosmetic only: the dps at which the beam reaches max width and the hottest
-   *  colour. Real damage keeps climbing past this; the LOOK just saturates. */
-  visualMaxDps: 300,
-  /** Beam core width (px) at a fresh lock … */
+  /** Heat (dps) gained per second the beam is firing. Uncapped: the climb IS the
+   *  weapon, and a kill or a target switch never gives any of it back. */
+  heatPerSec: 30,
+  /** Seconds of IDLE time (nothing in range) to shed HALF the current Heat. Decay
+   *  is proportional, so the brake scales with what it has to brake: the ~3s
+   *  Breather between Waves takes 1800 dps down to ~130, while a brief re-acquire
+   *  gap costs a hot drone almost nothing. Deliberately far quicker than the
+   *  climb — the one exception is below ~32 Heat, where proportional decay is
+   *  slower than `heatPerSec`; the drone is near-harmless there (see ADR-0020). */
+  coolHalfLife: 0.75,
+  /** Cosmetic only. Heat at which the LOOK finally tops out (max width, hottest
+   *  colour); real damage keeps climbing past it. Set far above what the old
+   *  per-target ramp ever reached, because Heat now persists across a whole Wave. */
+  visualHeatFull: 3000,
+  /** Cosmetic only. Knee of the logarithmic heat→look mapping: lower spends more
+   *  of the gradient on low Heat. Tuned so the beam is visibly warming within a
+   *  second AND still visibly creeping past 1000 dps instead of pinning. */
+  visualHeatKnee: 60,
+  /** Beam core width (px) at zero Heat … */
   beamWidthMin: 3,
-  /** … and at/above visualMaxDps. */
+  /** … and at/above visualHeatFull. */
   beamWidthMax: 14,
   /** Glow underlay width = core width × this (drawn low-alpha under the core). */
   glowWidthMult: 3,
   glowAlpha: 0.25,
   coreAlpha: 0.95,
-  /** Heat gradient the beam shifts through as its dps climbs (cool → hot). */
-  colorCool: 0x33ccff, // cyan — freshly locked, weak
+  /** Gradient the beam — and the drone's own tint — shift through as Heat climbs. */
+  colorCool: 0x33ccff, // cyan — cold, weak
   colorMid: 0xffffff, // white — spinning up
   colorHot: 0xff5522, // orange-red — melting
 } as const;

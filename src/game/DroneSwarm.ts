@@ -10,13 +10,19 @@ import type { Enemy } from "./EnemyPool";
  *
  * It is the first friendly thing that follows the player and the first continuous
  * beam. The orbit borrows the Warden Shield-Node idiom (cos/sin around a parent);
- * the beam damage borrows the Burn model (`hp -= dps * dt` each frame). The ramp
- * is per-locked-target and uncapped — it climbs while a beam holds one enemy and
- * resets the moment that enemy dies or leaves range (then the drone re-acquires).
+ * the beam damage borrows the Burn model (`hp -= dps * dt` each frame).
+ *
+ * Damage is driven by per-drone **Heat** (ADR-0020, which reversed ADR-0019's
+ * per-target ramp): Heat climbs, uncapped, the whole time a beam fires — a kill or
+ * a switch to a new target costs nothing — and decays exponentially ONLY while the
+ * drone is idle with nothing in range. So the weapon rewards sustained fire rather
+ * than big targets, and the one thing that cools it is a lull.
  *
  * The scene owns the count via `player.droneLevel`; this class reconciles its live
  * drones to that each frame (spawn on level-up; none ever despawn — indestructible)
  * and never touches the player's HP: collision is one-directional, drone → enemy.
+ * Because `GameScene.update` early-returns while the Upgrade Prompt, the pause
+ * overlay, or a lost pointer lock is up, Heat is frozen whenever the game is.
  */
 export interface DroneContext {
   /** Ship centre — the orbit origin. */
@@ -42,8 +48,9 @@ interface Drone {
   /** Generation stamp of the lock — distinguishes "target gone" from "slot reused"
    *  (pooled enemies recycle, exactly as Homing's Lock does — see ADR-0004). */
   targetGen: number;
-  /** Seconds the beam has held THIS target — the ramp input. Resets on re-lock. */
-  lockSeconds: number;
+  /** Heat: dps this drone's beam deals ON TOP of DRONE.baseDps. Survives kills,
+   *  target switches, and a lost Life; only idle time sheds it (ADR-0020). */
+  heat: number;
 }
 
 export class DroneSwarm {
@@ -84,19 +91,21 @@ export class DroneSwarm {
 
       let aim: number;
       if (target) {
-        drone.lockSeconds += dt;
-        const dps = DRONE.baseDps + DRONE.rampPerSec * drone.lockSeconds;
+        // Firing is the only thing that builds Heat, and nothing caps it.
+        drone.heat += DRONE.heatPerSec * dt;
         aim = Math.atan2(target.y - drone.y, target.x - drone.x);
         // Continuous damage (Burn model). A kill routes through the shared reward
-        // path and breaks the lock, so the ramp restarts on the next target.
-        if (target.takeDamage(dps * dt)) {
+        // path and drops the lock, but the Heat rides on into the next enemy.
+        if (target.takeDamage((DRONE.baseDps + drone.heat) * dt)) {
           ctx.destroyEnemy(target);
           drone.target = undefined;
-          drone.lockSeconds = 0;
         }
-        this.drawBeam(drone, target, dps);
+        this.drawBeam(drone, target);
       } else {
-        drone.lockSeconds = 0;
+        // Idle: the one and only way Heat comes off, and it comes off in
+        // proportion — a scorching drone sheds far more per second than a
+        // lukewarm one, so the brake keeps up with the uncapped climb.
+        drone.heat *= Math.pow(0.5, dt / DRONE.coolHalfLife);
         // Neutral: watch outward, away from the ship.
         aim = Math.atan2(drone.y - ctx.y, drone.x - ctx.x);
       }
@@ -107,14 +116,19 @@ export class DroneSwarm {
       drone.rotation += shortestAngle(desiredRot - drone.rotation) * aimEase;
       drone.sprite.position.set(drone.x, drone.y);
       drone.sprite.rotation = drone.rotation;
+      // The drone glows with its own Heat whether it is firing or not — with the
+      // beam off, this is the only way to see that an idle drone is still
+      // scorching, and to watch it cool.
+      drone.sprite.tint = heatTint(drone.heat);
     }
   }
 
   /**
    * Return the drone's target for this frame. Keep the locked enemy while it is
-   * alive, in its pool slot, and still in range — that is what lets the ramp build.
-   * Otherwise (dead or fled the range) drop it, reset the ramp, and lock the
-   * nearest enemy within range, if any.
+   * alive, in its pool slot, and still in range. Otherwise (dead or fled the range)
+   * drop it and lock the nearest enemy within range, if any. Heat is deliberately
+   * untouched here — switching targets is free; only finding NOTHING costs the
+   * drone, and it pays that in the idle branch of `update` (ADR-0020).
    */
   private acquire(drone: Drone, ctx: DroneContext): Enemy | undefined {
     const range2 = DRONE.range * DRONE.range;
@@ -128,8 +142,7 @@ export class DroneSwarm {
       return current;
     }
 
-    // Target gone or out of range → the ramp resets; re-acquire nearest in range.
-    drone.lockSeconds = 0;
+    // Target gone or out of range → re-acquire the nearest in range.
     let best: Enemy | undefined;
     let bestD = range2;
     for (const enemy of ctx.enemies) {
@@ -146,9 +159,9 @@ export class DroneSwarm {
   }
 
   /** Draw one beam: a low-alpha glow underlay plus a hot core, both coloured and
-   *  sized from the current dps (saturating cosmetically at DRONE.visualMaxDps). */
-  private drawBeam(drone: Drone, target: Enemy, dps: number): void {
-    const t = Math.min(1, dps / DRONE.visualMaxDps);
+   *  sized from the drone's Heat. */
+  private drawBeam(drone: Drone, target: Enemy): void {
+    const t = heatProgress(drone.heat);
     const color = heatColor(t);
     const width =
       DRONE.beamWidthMin + (DRONE.beamWidthMax - DRONE.beamWidthMin) * t;
@@ -184,7 +197,8 @@ export class DroneSwarm {
         rotation: 0,
         target: undefined,
         targetGen: 0,
-        lockSeconds: 0,
+        // A drone won from a later Upgrade level joins cold beside hot siblings.
+        heat: 0,
       });
     }
   }
@@ -208,7 +222,33 @@ function shortestAngle(diff: number): number {
   return d;
 }
 
-/** Map ramp progress t∈[0,1] onto the cool→mid→hot heat gradient. */
+/**
+ * Map Heat onto visual progress t∈[0,1]. Logarithmic, not the linear ratio the
+ * per-target ramp used: because Heat now persists across a whole Wave it routinely
+ * reaches four figures, and a linear map would pin at max within ~10s and stay
+ * there. The log curve is vivid inside the first second and still visibly creeping
+ * past 1000 dps (ADR-0020).
+ */
+function heatProgress(heat: number): number {
+  const knee = DRONE.visualHeatKnee;
+  const t =
+    Math.log1p(Math.max(0, heat) / knee) /
+    Math.log1p(DRONE.visualHeatFull / knee);
+  return Math.min(1, t);
+}
+
+/**
+ * The drone sprite's own tint: blended from untinted toward its beam's colour by
+ * the same progress, so a cold drone shows its natural art and only a hot one
+ * visibly smoulders. (Tinting straight to `heatColor` would leave even a stone-cold
+ * drone washed cyan.)
+ */
+function heatTint(heat: number): number {
+  const t = heatProgress(heat);
+  return lerpColor(0xffffff, heatColor(t), t);
+}
+
+/** Map heat progress t∈[0,1] onto the cool→mid→hot gradient. */
 function heatColor(t: number): number {
   return t <= 0.5
     ? lerpColor(DRONE.colorCool, DRONE.colorMid, t / 0.5)
