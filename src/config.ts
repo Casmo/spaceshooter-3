@@ -511,45 +511,47 @@ export const SPACESTATION = {
   muzzleOffset: 90,
 } as const;
 
-/** Lode (Asteroids-Sheet frame 1): a boss-HP golden rock that drives across the
- *  TOP of the field once every `everyWaves` waves from `startWave`, leaking Stars
- *  as it passes and bursting into a shower of them if it is killed before it
- *  leaves. It never shoots and never descends into the player's zone — it is an
+/** Lode (Asteroids_Lode): a heavy golden rock that drives across the TOP of the
+ *  field once every `everyWaves` waves from `startWave`, leaking Stars as it
+ *  passes and bursting into a shower of them if it is killed before it leaves.
+ *  It never shoots and never descends into the player's zone — it is an
  *  opportunity under a deadline, not a capstone: the wave clears whether or not it
  *  died, and an escaping Lode is silent. See ADR-0021. */
 export const LODE = {
-  /** 64x64 native at 2.5x = 160px. Larger than an Asteroid (128px) but smaller
-   *  than the SpaceStation (216px), so the gold shimmer — not the silhouette —
-   *  is what has to carry the telegraph at this size. */
-  scale: 2.5,
-  /** Base HP, at Boss level, scaled by the wave hpMult and by NOTHING else: no
-   *  per-appearance compounding, so the event never becomes un-cashable (ADR-0021). */
-  hp: 2000,
+  /** 36x32 native at 2x = 72x64 — exactly the Mine's footprint, because it is
+   *  exactly the Mine's rock in gold instead of red. Untinted: the art carries
+   *  the colour, so hue alone tells treasure from bomb (ADR-0021). */
+  scale: 2,
+  /** Base HP, scaled by the wave hpMult and by NOTHING else: no per-appearance
+   *  compounding, so the event never becomes un-cashable (ADR-0021). Sits between
+   *  a Mini-boss (900) and a Boss (2000) — cut from 2000 when the sprite shrank,
+   *  since a smaller target eats a share of the player's shots. */
+  hp: 1400,
   /** Mini-boss-grade contact damage. The Lode SURVIVES the contact (like the
    *  Boss) — otherwise a ram would collect the payout without the damage check. */
   contactDamage: 40,
-  /** Collision radius as a fraction of the sprite half-width (the Asteroid's). */
-  radiusFactor: 0.78,
+  /** Collision radius as a fraction of the sprite half-width (the Mine's, since
+   *  it is the Mine's art) — ~25px. */
+  radiusFactor: 0.7,
   /** The top-of-field band its lane Y is randomised inside (virtual px). */
   laneMinY: 160,
   laneMaxY: 320,
   /** Seconds for one edge-to-edge traverse. Speed is DERIVED from this at spawn
-   *  ((field width + sprite width) / traverseSeconds ≈ 130 px/s), so the window
+   *  ((field width + sprite width) / traverseSeconds ≈ 100 px/s), so the window
    *  stays exactly this long at every wave — the Lode deliberately ignores the
    *  wave speedMult (the Mine/Bomber precedent). This is the whole deadline, and
-   *  it sets the DPS the check asks for: retune it here. */
-  traverseSeconds: 16,
+   *  it sets the DPS the check asks for: retune it here. Slowed 16 -> 20 with the
+   *  sprite shrink, so the lead a player must aim off (~50px) stays close to the
+   *  hit window rather than dwarfing it. */
+  traverseSeconds: 20,
   /** Cosmetic tumble (rad/s, random direction) — it is a rock, so it rolls. */
   spin: 0.25,
-  /** Gold base tint, shimmering to pale and back on shimmerPeriod seconds. */
-  baseTint: 0xffd24a,
-  shimmerTint: 0xfff0a8,
-  shimmerPeriod: 1.5,
-  /** Seconds between the Stars it drips while alive (~9 over the 16s traverse).
+  /** Seconds between the Stars it drips while alive (~6 over the 20s traverse).
    *  Emitted only while the body is fully on-screen, so nothing drops outside
-   *  the field. The count is dripInterval against traverseSeconds — raise this
-   *  to 3.2 to put the consolation payout back to the original ~4-5. */
-  dripInterval: 1.6,
+   *  the field. The count is dripInterval against traverseSeconds — doubled from
+   *  1.6 when the window grew to 20s, holding the consolation payout near the
+   *  original ~4-5 instead of letting it ride the longer window up to ~11. */
+  dripInterval: 3.2,
   /** First wave a Lode appears in, and the cadence after it: 15, 18, 21, 24… The
    *  two knobs that move the whole event; see isLodeWave. */
   startWave: 15,
@@ -734,15 +736,16 @@ export const STAR = {
    *  launch impulse: ~350px over the 5s lifetime, so a drop sinks toward the
    *  player's zone rather than sitting pinned where its kill happened. */
   sinkSpeed: 70,
-  /** Launch-impulse speed range (virtual px/s) for a burst Star. */
-  burstSpeedMin: 250,
-  burstSpeedMax: 450,
+  /** Launch-impulse speed range (virtual px/s) for a burst Star. Halved when the
+   *  Lode dropped to sprite scale 2 — see burstDamping. */
+  burstSpeedMin: 125,
+  burstSpeedMax: 225,
   /** Exponential decay of the launch impulse, per second. Outward drift settles
-   *  at ≈ speed / burstDamping (≈140-250px), keeping the payout a sweepable
-   *  cluster instead of scattering off screen. This was originally matched to
-   *  the Lode's Kill Burst footprint at sprite scale 5; the Lode is now scale
-   *  2.5, so the shower flings wider than its explosion — halve the burst speeds
-   *  to restore the match (see ADR-0022). */
+   *  at ≈ speed / burstDamping (≈70-125px), keeping the payout a sweepable
+   *  cluster instead of scattering off screen. That range is matched to the
+   *  Lode's Kill Burst footprint (64px half-width at sprite scale 2), so the
+   *  shower rides its explosion outward instead of scattering from it. Retune
+   *  the speeds, not the damping, if the Lode's scale moves again (ADR-0022). */
   burstDamping: 1.8,
 } as const;
 

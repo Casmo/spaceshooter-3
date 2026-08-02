@@ -20,7 +20,6 @@ import {
   type AsteroidSize,
 } from "../config";
 import { getTexture, getFrames, type AssetAlias } from "../assets";
-import { lerpColor } from "./colors";
 
 export type EnemyKind =
   | "swarmer"
@@ -162,9 +161,10 @@ export class Enemy {
   killedByBurn = false;
   /**
    * The tint this enemy's sprite returns to whenever a temporary tint (a burn, a
-   * Bomber/SpaceStation telegraph) ends. White for every kind but the Lode,
-   * whose gold IS its identity — resetting to hardcoded white would erase it the
-   * moment a Burn wore off (ADR-0021).
+   * Bomber/SpaceStation telegraph) ends. White for every kind today — the Lode's
+   * gold was the original motivating case and now lives in its art instead
+   * (ADR-0021) — but "restore this enemy's own colour" stays the right rule for
+   * the next kind that wants one.
    */
   private baseTint = 0xffffff;
 
@@ -210,11 +210,10 @@ export class Enemy {
   private bombDashSpeed = 0;
 
   // Lode: a constant-speed horizontal traverse across the top of the field
-  // (lodeVx carries the direction), a gold shimmer on its own phase, a cosmetic
-  // tumble via `spin`, and a Star dripped every dripInterval (emitted only while
-  // fully on-screen). It never shoots and never turns. See ADR-0021.
+  // (lodeVx carries the direction), a cosmetic tumble via `spin`, and a Star
+  // dripped every dripInterval (emitted only while fully on-screen). It never
+  // shoots and never turns. See ADR-0021.
   private lodeVx = 0;
-  private lodeShimmerPhase = 0;
   private lodeDripTimer = 0;
 
   // Shooting (gunner / mini-boss / warden).
@@ -301,7 +300,7 @@ export class Enemy {
     this.sprite.scale.set(scale);
     this.sprite.rotation = 0;
     this.sprite.alpha = 1;
-    // Default every kind back to untinted; spawnLode overrides it to gold.
+    // Default every kind back to untinted. No kind overrides this today.
     this.baseTint = 0xffffff;
     this.sprite.tint = this.baseTint;
     this.killedByBurn = false;
@@ -328,7 +327,6 @@ export class Enemy {
     this.dodgeTriggered = false;
     this.dodgeTimer = 0;
     this.lodeVx = 0;
-    this.lodeShimmerPhase = 0;
     this.lodeDripTimer = 0;
     this.stationFireTimer = 0;
     this.stationPerSide = 0;
@@ -613,7 +611,7 @@ export class Enemy {
   }
 
   /**
-   * Spawn a Lode: a boss-HP golden rock that drives across the TOP of the field
+   * Spawn a Lode: a heavy golden rock that drives across the TOP of the field
    * in a straight horizontal lane and exits the far side ~traverseSeconds later
    * (ADR-0021). It enters from the left or right at 50/50 and its lane Y is
    * randomised inside a top band, so each appearance has to be re-read.
@@ -634,8 +632,6 @@ export class Enemy {
     this.hp = LODE.hp * mods.hpMult;
     this.maxHp = this.hp;
     this.contactDamage = LODE.contactDamage;
-    this.baseTint = LODE.baseTint;
-    this.sprite.tint = this.baseTint;
     this.spin = (Math.random() < 0.5 ? -1 : 1) * LODE.spin;
     this.radius = (this.sprite.width / 2) * LODE.radiusFactor;
     this.lodeDripTimer = LODE.dripInterval;
@@ -676,8 +672,8 @@ export class Enemy {
         this.kill();
         return;
       }
-      // A burn that wears off restores this enemy's own tint, not white — a
-      // burning Lode still looks golden afterwards.
+      // A burn that wears off restores this enemy's own tint rather than
+      // assuming white (ADR-0021).
       this.restoreTint();
     }
     // Animated enemies (the Bomber) cycle their frame set on the sprite (ADR-0013).
@@ -918,9 +914,9 @@ export class Enemy {
   }
 
   /**
-   * Lode: drive the lane at constant speed, tumble for show, shimmer gold, and
-   * drip a Star every dripInterval (ADR-0021). No aim, no fire, no turn — the
-   * whole enemy is a moving deadline. The drip is held until the body is fully
+   * Lode: drive the lane at constant speed, tumble for show, and drip a Star
+   * every dripInterval (ADR-0021). No aim, no fire, no turn — the whole enemy is
+   * a moving deadline. The drip is held until the body is fully
    * on-screen (the SpaceStation's hold-fire precedent) so nothing spawns outside
    * the field, and the dripped Stars sink out of the high lane toward the
    * player's zone on their own (ADR-0022).
@@ -929,20 +925,9 @@ export class Enemy {
     this.sprite.x += this.lodeVx * dt;
     this.sprite.rotation += this.spin * dt; // cosmetic; the lane is unaffected
 
-    // Shimmer gold -> pale -> gold. A live burn owns the tint (it is the damage
-    // read), so the shimmer yields to it and resumes when the burn wears off.
-    if (this.burnTimer <= 0) {
-      this.lodeShimmerPhase += dt;
-      const t =
-        0.5 -
-        0.5 *
-          Math.cos((this.lodeShimmerPhase / LODE.shimmerPeriod) * Math.PI * 2);
-      this.sprite.tint = lerpColor(LODE.baseTint, LODE.shimmerTint, t);
-    }
-
     // The drip runs on its own clock from the moment it spawns; only the
     // EMISSION is held until the body is fully on-screen, so nothing spawns
-    // outside the field and the cadence still yields ~4 Stars per traverse.
+    // outside the field and the cadence still yields ~6 Stars per traverse.
     // (Gating the clock too would cost a drip to the off-screen entry.)
     this.lodeDripTimer -= dt;
     if (this.lodeDripTimer > 0) return;

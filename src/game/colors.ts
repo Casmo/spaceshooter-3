@@ -11,8 +11,7 @@ export function damageTierColor(damage: number): number {
   return DAMAGE_TIERS[DAMAGE_TIERS.length - 1].color;
 }
 
-/** Linear-interpolate two 0xRRGGBB colours. Shared by the Drone's heat gradient
- *  and the Lode's gold shimmer. */
+/** Linear-interpolate two 0xRRGGBB colours. Used by the Drone's heat gradient. */
 export function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff;
   const ag = (a >> 8) & 0xff;

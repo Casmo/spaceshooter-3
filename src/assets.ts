@@ -22,6 +22,9 @@ const MANIFEST = {
   miniboss: "./assets/SpaceShooter/Enemies/Pirate_Boss.png",
   boss: "./assets/SpaceShooter/Enemies/fighter2.png",
   mine: "./assets/SpaceShooter/Enemies/Asteroids_Explosive.png",
+  // Lode (ADR-0021): the golden treasure rock. The SAME 36x32 rock as the Mine
+  // in gold instead of red — deliberate, see the ADR.
+  lode: "./assets/SpaceShooter/Enemies/Asteroids_Lode.png",
   warden: "./assets/SpaceShooter/Enemies/CrabShip.png",
   // SpaceStation: the slow side-raking fortress (144x144), wave 20+ (ADR-0015).
   station: "./assets/SpaceShooter/Enemies/SpaceStation.png",
@@ -147,6 +150,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("miniboss", Assets.get("miniboss"));
   textures.set("boss", Assets.get("boss"));
   textures.set("mine", Assets.get("mine"));
+  textures.set("lode", Assets.get("lode"));
   textures.set("warden", Assets.get("warden"));
   textures.set("station", Assets.get("station"));
   // Shield Node: one irregular chunk cut from the Debris atlas (31x31 at 210,19).
@@ -227,11 +231,6 @@ export async function loadAssets(): Promise<void> {
   textures.set("asteroidLarge", asteroidFrames[0]);
   textures.set("asteroidMedium", asteroidFrames[2]);
   textures.set("asteroidSmall", asteroidFrames[4]);
-  // Lode (ADR-0021): the golden drive-by treasure rock. Frame 1 of the same
-  // sheet — unclaimed by the three Asteroid sizes (0, 2, 4), so the Lode has its
-  // own silhouette and is never mistaken for a rock the player has been
-  // shooting since wave 3. No new art: only this alias.
-  textures.set("lode", asteroidFrames[1]);
 }
 
 /** Resolve a loaded texture by alias. */

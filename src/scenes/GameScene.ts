@@ -767,7 +767,7 @@ export class GameScene implements Scene {
   /**
    * A Lode's death payout (ADR-0021): a wave-scaled shower of Stars flung out
    * through the explosion in uniformly random directions. Each rides a launch
-   * impulse that damps out after ~140-250px — matched to the Kill Burst's
+   * impulse that damps out after ~70-125px — matched to the Kill Burst's
    * footprint at this sprite scale — so the loot visibly bursts open like a
    * treasure chest and then settles into a cluster the player can sweep, rather
    * than scattering off screen. Partial collection is an accepted outcome: it is
