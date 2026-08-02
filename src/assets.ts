@@ -76,6 +76,7 @@ export type AssetAlias =
   | "asteroidLarge"
   | "asteroidMedium"
   | "asteroidSmall"
+  | "lode"
   | "bullet"
   | "missile"
   | "drone"
@@ -226,6 +227,11 @@ export async function loadAssets(): Promise<void> {
   textures.set("asteroidLarge", asteroidFrames[0]);
   textures.set("asteroidMedium", asteroidFrames[2]);
   textures.set("asteroidSmall", asteroidFrames[4]);
+  // Lode (ADR-0021): the golden drive-by treasure rock. Frame 1 of the same
+  // sheet — unclaimed by the three Asteroid sizes (0, 2, 4), so the Lode has its
+  // own silhouette and is never mistaken for a rock the player has been
+  // shooting since wave 3. No new art: only this alias.
+  textures.set("lode", asteroidFrames[1]);
 }
 
 /** Resolve a loaded texture by alias. */

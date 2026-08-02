@@ -12,6 +12,7 @@ import {
   WARDEN,
   BOMBER,
   SPACESTATION,
+  LODE,
   ENEMY_BULLET,
   WAVES,
   XP,
@@ -19,6 +20,7 @@ import {
   type AsteroidSize,
 } from "../config";
 import { getTexture, getFrames, type AssetAlias } from "../assets";
+import { lerpColor } from "./colors";
 
 export type EnemyKind =
   | "swarmer"
@@ -29,7 +31,8 @@ export type EnemyKind =
   | "mine"
   | "warden"
   | "bomber"
-  | "station";
+  | "station"
+  | "lode";
 
 /** Hard cap on Shield Nodes per enemy (WARDEN.nodeCount must not exceed it). The
  *  sprites are pre-allocated per pooled enemy, so this stays small. */
@@ -101,12 +104,18 @@ export class ShieldNode {
   }
 }
 
-/** Per-frame context passed to enemies so they can shoot at the player. */
+/** Per-frame context passed to enemies so they can act on the wider world. */
 export interface EnemyContext {
   playerX: number;
   playerY: number;
   /** Spawn an enemy bullet. */
   fire(x: number, y: number, vx: number, vy: number, damage: number): void;
+  /**
+   * Drop a Star at (x, y) — the Lode's drip as it crosses (ADR-0021). The enemy
+   * pool has no access to the Star pool and the game scene owns both, so this
+   * rides the existing per-frame seam rather than wiring the two pools together.
+   */
+  dropStar(x: number, y: number): void;
 }
 
 /** Per-wave stat scaling applied at spawn time. */
@@ -151,6 +160,13 @@ export class Enemy {
   scoreValue = 0;
   /** Set when a burn DoT (not a bullet/contact) lands the killing blow. */
   killedByBurn = false;
+  /**
+   * The tint this enemy's sprite returns to whenever a temporary tint (a burn, a
+   * Bomber/SpaceStation telegraph) ends. White for every kind but the Lode,
+   * whose gold IS its identity — resetting to hardcoded white would erase it the
+   * moment a Burn wore off (ADR-0021).
+   */
+  private baseTint = 0xffffff;
 
   // Burn damage-over-time state.
   private burnTimer = 0;
@@ -192,6 +208,14 @@ export class Enemy {
   private bombHeadY = 1;
   private bombSpeed = 0;
   private bombDashSpeed = 0;
+
+  // Lode: a constant-speed horizontal traverse across the top of the field
+  // (lodeVx carries the direction), a gold shimmer on its own phase, a cosmetic
+  // tumble via `spin`, and a Star dripped every dripInterval (emitted only while
+  // fully on-screen). It never shoots and never turns. See ADR-0021.
+  private lodeVx = 0;
+  private lodeShimmerPhase = 0;
+  private lodeDripTimer = 0;
 
   // Shooting (gunner / mini-boss / warden).
   private canShoot = false;
@@ -277,7 +301,9 @@ export class Enemy {
     this.sprite.scale.set(scale);
     this.sprite.rotation = 0;
     this.sprite.alpha = 1;
-    this.sprite.tint = 0xffffff;
+    // Default every kind back to untinted; spawnLode overrides it to gold.
+    this.baseTint = 0xffffff;
+    this.sprite.tint = this.baseTint;
     this.killedByBurn = false;
     this.burnTimer = 0;
     this.burnDps = 0;
@@ -301,6 +327,9 @@ export class Enemy {
     this.burstTimer = 0;
     this.dodgeTriggered = false;
     this.dodgeTimer = 0;
+    this.lodeVx = 0;
+    this.lodeShimmerPhase = 0;
+    this.lodeDripTimer = 0;
     this.stationFireTimer = 0;
     this.stationPerSide = 0;
     this.shieldCount = 0;
@@ -583,10 +612,58 @@ export class Enemy {
     this.sprite.position.set(x, y);
   }
 
+  /**
+   * Spawn a Lode: a boss-HP golden rock that drives across the TOP of the field
+   * in a straight horizontal lane and exits the far side ~traverseSeconds later
+   * (ADR-0021). It enters from the left or right at 50/50 and its lane Y is
+   * randomised inside a top band, so each appearance has to be re-read.
+   *
+   * Its speed is derived from the traverse time rather than a wave ramp, and it
+   * deliberately ignores `speedMult` (the Mine/Bomber precedent): the window is
+   * exactly as long at wave 45 as at wave 15, so what the player learned still
+   * applies. HP takes the wave hpMult and NO per-appearance multiplier — the
+   * failure mode of compounding here isn't a soft-lock (it flees) but a
+   * permanently un-cashable event, which is just as bad.
+   */
+  spawnLode(mods: WaveMods): void {
+    this.reset("lode", LODE.scale);
+    this.kind = "lode";
+    this.mods = mods;
+    this.xpValue = XP.lode;
+    this.scoreValue = SCORE.lode;
+    this.hp = LODE.hp * mods.hpMult;
+    this.maxHp = this.hp;
+    this.contactDamage = LODE.contactDamage;
+    this.baseTint = LODE.baseTint;
+    this.sprite.tint = this.baseTint;
+    this.spin = (Math.random() < 0.5 ? -1 : 1) * LODE.spin;
+    this.radius = (this.sprite.width / 2) * LODE.radiusFactor;
+    this.lodeDripTimer = LODE.dripInterval;
+    // Enter from either side, at a random altitude in the top band. The lane is
+    // edge-to-edge including the sprite's own width, so the full body crosses.
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const half = this.sprite.width / 2;
+    const distance = VIRTUAL_WIDTH + this.sprite.width;
+    this.lodeVx = (dir * distance) / LODE.traverseSeconds;
+    this.sprite.position.set(
+      dir > 0 ? -half : VIRTUAL_WIDTH + half,
+      randRange(LODE.laneMinY, LODE.laneMaxY),
+    );
+  }
+
   /** Apply (or refresh) a burn DoT. Burns stack their dps and refresh duration. */
   applyBurn(dps: number, duration: number): void {
     this.burnDps += dps;
     this.burnTimer = Math.max(this.burnTimer, duration);
+  }
+
+  /**
+   * Drop a temporary tint (a burn, a Bomber/SpaceStation telegraph) and return
+   * the sprite to this enemy's own colour. A live burn owns the tint — it is the
+   * damage read — so it always wins, and the restore waits for it to expire.
+   */
+  private restoreTint(): void {
+    if (this.burnTimer <= 0) this.sprite.tint = this.baseTint;
   }
 
   update(dt: number, ctx: EnemyContext): void {
@@ -599,7 +676,9 @@ export class Enemy {
         this.kill();
         return;
       }
-      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+      // A burn that wears off restores this enemy's own tint, not white — a
+      // burning Lode still looks golden afterwards.
+      this.restoreTint();
     }
     // Animated enemies (the Bomber) cycle their frame set on the sprite (ADR-0013).
     if (this.animFrames) {
@@ -638,6 +717,9 @@ export class Enemy {
         break;
       case "bomber":
         this.updateBomber(dt, ctx);
+        break;
+      case "lode":
+        this.updateLode(dt, ctx);
         break;
       case "mine":
         if (!this.aimed) {
@@ -752,7 +834,7 @@ export class Enemy {
     if (this.stationFireTimer <= 0) {
       this.fireSideRake(ctx);
       this.stationFireTimer = SPACESTATION.fireInterval;
-      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+      this.restoreTint();
     }
   }
 
@@ -816,7 +898,7 @@ export class Enemy {
     if (this.bombDodgeTimer <= 0) {
       aimAtPlayer();
       this.bombDodgeTimer = BOMBER.dodgeInterval;
-      if (this.burnTimer <= 0) this.sprite.tint = 0xffffff;
+      this.restoreTint();
     }
 
     // Ease the burst speed down to the slow drift floor along the held heading.
@@ -833,6 +915,41 @@ export class Enemy {
     const hh = this.sprite.height / 2;
     this.sprite.x = Math.min(VIRTUAL_WIDTH - hw, Math.max(hw, this.sprite.x));
     this.sprite.y = Math.min(VIRTUAL_HEIGHT - hh, Math.max(hh, this.sprite.y));
+  }
+
+  /**
+   * Lode: drive the lane at constant speed, tumble for show, shimmer gold, and
+   * drip a Star every dripInterval (ADR-0021). No aim, no fire, no turn — the
+   * whole enemy is a moving deadline. The drip is held until the body is fully
+   * on-screen (the SpaceStation's hold-fire precedent) so nothing spawns outside
+   * the field, and the dripped Stars sink out of the high lane toward the
+   * player's zone on their own (ADR-0022).
+   */
+  private updateLode(dt: number, ctx: EnemyContext): void {
+    this.sprite.x += this.lodeVx * dt;
+    this.sprite.rotation += this.spin * dt; // cosmetic; the lane is unaffected
+
+    // Shimmer gold -> pale -> gold. A live burn owns the tint (it is the damage
+    // read), so the shimmer yields to it and resumes when the burn wears off.
+    if (this.burnTimer <= 0) {
+      this.lodeShimmerPhase += dt;
+      const t =
+        0.5 -
+        0.5 *
+          Math.cos((this.lodeShimmerPhase / LODE.shimmerPeriod) * Math.PI * 2);
+      this.sprite.tint = lerpColor(LODE.baseTint, LODE.shimmerTint, t);
+    }
+
+    // The drip runs on its own clock from the moment it spawns; only the
+    // EMISSION is held until the body is fully on-screen, so nothing spawns
+    // outside the field and the cadence still yields ~4 Stars per traverse.
+    // (Gating the clock too would cost a drip to the off-screen entry.)
+    this.lodeDripTimer -= dt;
+    if (this.lodeDripTimer > 0) return;
+    this.lodeDripTimer = LODE.dripInterval;
+    const half = this.sprite.width / 2;
+    if (this.sprite.x < half || this.sprite.x > VIRTUAL_WIDTH - half) return;
+    ctx.dropStar(this.sprite.x, this.sprite.y);
   }
 
   /** Advance the orbiting Shield: rotate the ring, tick each live Node's burn,
@@ -1133,6 +1250,13 @@ export class EnemyPool {
     this.live.push(e);
   }
 
+  /** Spawn a Lode: it picks its own entry side and lane altitude (ADR-0021). */
+  spawnLode(mods: WaveMods): void {
+    const e = this.obtain();
+    e.spawnLode(mods);
+    this.live.push(e);
+  }
+
   spawnBoss(mods: WaveMods, appearance: number): void {
     const e = this.obtain();
     e.spawnBoss(mods, appearance);
@@ -1207,11 +1331,13 @@ export class EnemyPool {
         this.live.splice(i, 1);
         continue;
       }
-      // Everyone despawns off the bottom; a Mine flies a free aimed line, so it
-      // can also exit the top or a side — escaping that way never detonates.
+      // Everyone despawns off the bottom. Two kinds may also leave sideways or
+      // off the top: a Mine flies a free aimed line (escaping never detonates),
+      // and a Lode always drives out the far side of its lane. An escaping Lode
+      // is silent — no penalty, no message — like every other enemy that flees.
       const offBottom = e.sprite.y > VIRTUAL_HEIGHT + e.sprite.height;
       const offOther =
-        e.kind === "mine" &&
+        (e.kind === "mine" || e.kind === "lode") &&
         (e.sprite.y < -e.sprite.height ||
           e.sprite.x < -e.sprite.width ||
           e.sprite.x > VIRTUAL_WIDTH + e.sprite.width);

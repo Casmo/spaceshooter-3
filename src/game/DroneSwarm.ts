@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite } from "pixi.js";
 import { DRONE } from "../config";
 import { getTexture } from "../assets";
+import { lerpColor } from "./colors";
 import type { Enemy } from "./EnemyPool";
 
 /**
@@ -253,15 +254,4 @@ function heatColor(t: number): number {
   return t <= 0.5
     ? lerpColor(DRONE.colorCool, DRONE.colorMid, t / 0.5)
     : lerpColor(DRONE.colorMid, DRONE.colorHot, (t - 0.5) / 0.5);
-}
-
-/** Linear-interpolate two 0xRRGGBB colours. */
-function lerpColor(a: number, b: number, t: number): number {
-  const ar = (a >> 16) & 0xff;
-  const ag = (a >> 8) & 0xff;
-  const ab = a & 0xff;
-  const r = Math.round(ar + (((b >> 16) & 0xff) - ar) * t);
-  const g = Math.round(ag + (((b >> 8) & 0xff) - ag) * t);
-  const bl = Math.round(ab + ((b & 0xff) - ab) * t);
-  return (r << 16) | (g << 8) | bl;
 }

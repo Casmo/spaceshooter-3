@@ -19,10 +19,12 @@ The "≈ XP gained" column assumes most Stars are collected. It's a rough estima
 | 6  | Mines | 16 | — | ~90 |
 | 8  | HP ramp steepens (late scaling) | 20 | — | ~110 |
 | 10 | — | 24 | **Boss** (+ guaranteed Star) | ~195 |
-| 15 | Wardens, Bombers, Gunner bursts | 34 | Mini-boss | ~255 |
+| 15 | Wardens, Bombers, Gunner bursts, **Lodes** | 34 | Mini-boss (+ Lode) | ~255 |
 | 20 | SpaceStations | 44 | Boss | ~370 |
 | 25 | Relentless endgame: a mini-boss **every** wave | 54 | Mini-boss (flat HP) | ~425 |
-| 30 | — | 64 | Boss **+** Mini-boss | ~555 |
+| 30 | — | 64 | Boss **+** Mini-boss (+ Lode) | ~555 |
+
+**Lode cadence:** a Lode crosses the top on waves **15, 18, 21, 24, 27, 30…** — every `LODE.everyWaves` (3) from `LODE.startWave` (15), forever. Exactly one per Lode wave, spliced *on top of* the budget at the halfway mark (so a Lode wave draws the same number of regular enemies as any other), and never suppressed by a mini-boss or Boss on the same wave. The Lode is not counted in the "≈ XP gained" column above: it drips ~4–5 Stars whether or not it dies, and pays 60 XP plus a 10+ Star shower (≈180 XP) if killed inside its window — a swing large enough that averaging it would misrepresent the wave.
 
 **Level-up threshold curve** (player levels, distinct from waves): first level-up needs `20` XP (`XP.baseThreshold`); each threshold then grows ×`1.1` per level up to level 10, and ×`1.16` after that — so late-game enemy floods don't over-level you. Tuned toward ~30 level-ups on an average run (~wave 9) and ~50 on a great run (~wave 19).
 
@@ -51,7 +53,7 @@ The "Draw chance" below is each card's share of the full pool (total weight = 81
 | Bounce | legendary | 1 | 1.2% | 3 | Each hit spawns a full clone bullet; chains deeper per level |
 | Drones | legendary | 1 | 1.2% | 3 | Orbiting drone fires a laser whose damage builds while it keeps firing (uncapped, kept across kills) and cools only while idle; +1 drone/level |
 
-The only in-world pickup is the **Star** (`Credits-Sheet.png`), a spinning coin worth 12 XP — see table 1 for its drop rules.
+The only in-world pickup is the **Star** (`Credits-Sheet.png`), a spinning coin worth 12 XP — see table 1 for its drop rules. Every Star sinks gently downward (~70 px/s) for its 5s life, and a Star can be spawned with a decaying outward impulse — that is what flings a Lode's death payout through its explosion. See ADR-0022.
 
 ![Star](public/assets/SpaceShooter/Powerup/Credits-Sheet.png)
 
@@ -70,5 +72,10 @@ The only in-world pickup is the **Star** (`Credits-Sheet.png`), a spinning coin 
 | ![Warden](public/assets/SpaceShooter/Enemies/CrabShip.png) | **Warden** | Wave 15 | Slow tank ringed by an orbiting shield of destructible Nodes — a rotating gap lets your upward shots through, or blast the Nodes open. |
 | ![Bomber](public/assets/SpaceShooter/ProjectilesAndExplosions/Bombe-Sheet.png) | **Bomber** | Wave 15 | The Mine's re-aiming cousin (first animated enemy). Re-targets your current position every ~3s, telegraphs, then bursts toward you and detonates. |
 | ![SpaceStation](public/assets/SpaceShooter/Enemies/SpaceStation.png) | **SpaceStation** | Wave 20 | Slow, heavy fortress that lingers and rakes a vertical comb of pure-horizontal bullets out both flanks; thread the gaps or leave its band. |
+| ![Lode](public/assets/SpaceShooter/Enemies/Asteroids-Sheet.png) | **Lode** | Wave 15 | Golden boss-HP rock that drives across the top every 3rd wave, dripping Stars. Kill it inside its ~8s window for a 10+ Star shower; it never shoots, survives a ram, and always leaves. |
 
-**Per-kill XP** (`config.ts` → `XP`): Swarmer 2 · Gunner 4 · Asteroid 4/2/1 (large/medium/small) · Mine 4 · Bomber 6 · Warden 14 · SpaceStation 16 · Mini-boss 30 · Boss 60. Star pickup: 12.
+**Per-kill XP** (`config.ts` → `XP`): Swarmer 2 · Gunner 4 · Asteroid 4/2/1 (large/medium/small) · Mine 4 · Bomber 6 · Warden 14 · SpaceStation 16 · Mini-boss 30 · Boss 60 · **Lode 60**. Star pickup: 12.
+
+**Per-kill Score** (`config.ts` → `SCORE`): Swarmer 10 · Gunner 30 · Asteroid 25/12/5 · Mine 25 · Bomber 35 · Warden 100 · SpaceStation 130 · Mini-boss 250 · Boss 600 · **Lode 600**.
+
+The Lode's own tuning lives in `config.ts` → `LODE`: 2000 base HP (× the wave `hpMult`, and **nothing else** — no per-appearance stacking), 40 contact damage, a fixed 8s traverse that ignores the wave `speedMult`, a Star dripped every 1.6s, and a death burst of `10 + floor((wave − 15) / 3)` Stars. Move the whole event with the two knobs `LODE.startWave` and `LODE.everyWaves`. See ADR-0021.

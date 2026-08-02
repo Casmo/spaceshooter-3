@@ -150,9 +150,13 @@ _Avoid_: armor, force field, HP (HP is the player's damage buffer — see HP).
 One destructible circle in a Warden's Shield. It has its own small HP pool and orbits with the others; once destroyed it is gone for good, permanently widening the gap. A shot that strikes a live Node is stopped there and never reaches the body — except an Explosive blast, which wraps past the Shield to the body, and a Bounce-bullet, which can slip through a gap from an exposed angle.
 _Avoid_: orb, segment, turret.
 
+**Lode**:
+The golden drive-by treasure: a boss-HP rock that crosses the **top** of the field once every third Wave from Wave 15, entering from either side at a slightly different altitude each time and leaving ~8 seconds later. It never shoots and never descends into the player's zone, and it always leaves — a Wave clears whether or not it died, though a Lode still crossing holds the clear until it is gone. Its whole identity is **opportunity under a deadline**: for those eight seconds there is something on the field worth far more than the adds spawning around it, and the player must decide whether to look up and eat the risk from everything they are ignoring. It leaks a Star every so often as it passes, and bursts into a shower of ten or more if it is killed in time. Failing it costs nothing but the loot. Unmistakably gold and shimmering, visibly larger than any regular enemy, and tumbling slowly. Ramming it hurts and does **not** destroy it — the only way to cash it in is to out-damage it. See ADR-0021. (`Asteroids-Sheet` frame 1)
+_Avoid_: Asteroid (a Lode never splits and has its own frame), capstone / Mini-boss / Boss (it flees and never gates a Wave clear), treasure chest, bonus enemy.
+
 **Star**:
-The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1. Attracted by the Pickup Range upgrade. Rendered as a spinning coin. (`Credits-Sheet`)
-_Avoid_: gem, orb, XP drop.
+The XP pickup that occasionally drops on kill and must be collected before it expires. The only collectible pickup in v1 — there is exactly one kind, and a Lode's burst Stars are ordinary Stars that happen to be launched. Every Star **sinks** gently downward for its whole life, so pickups behave like objects in a moving world and drops drift toward the player's zone rather than expiring where the kill happened; one may also be spawned with an **initial impulse** that decays into that sink, which is what flings a Lode's payout outward through the explosion. Attracted by the Pickup Range upgrade once in range, on top of the drift. Rendered as a spinning coin. See ADR-0022. (`Credits-Sheet`)
+_Avoid_: gem, orb, XP drop, falling (it sinks gently — it is not affected by gravity or thrown down).
 
 ### Effects
 

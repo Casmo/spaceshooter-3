@@ -1,4 +1,12 @@
-import { WAVES, MINE, WARDEN, BOMBER, SPACESTATION } from "../config";
+import {
+  WAVES,
+  MINE,
+  WARDEN,
+  BOMBER,
+  SPACESTATION,
+  LODE,
+  isLodeWave,
+} from "../config";
 import type { EnemyPool, WaveMods } from "./EnemyPool";
 
 type SpawnKind =
@@ -14,14 +22,19 @@ type SpawnKind =
   | "mine"
   | "warden"
   | "bomber"
-  | "station";
+  | "station"
+  // The Lode: a drive-by treasure, spliced on top of the budget every few waves
+  // from LODE.startWave. Not a capstone — it flees, and the wave clears without
+  // it (ADR-0021).
+  | "lode";
 
 /**
  * Drives discrete, escalating waves. Each wave spawns a budget of enemies over
  * time; once the budget is spent and the field is clear, a ~3s breather plays
  * (with a "NEXT WAVE" banner) before the next, harder wave begins. A boss or
- * mini-boss is spliced mid-wave into the budget on milestone waves. Difficulty
- * scales via count, stats, and asteroid splits.
+ * mini-boss is spliced mid-wave into the budget on milestone waves, and a Lode
+ * crosses the top on its own cadence. Difficulty scales via count, stats, and
+ * asteroid splits.
  */
 export class WaveManager {
   private waveNumber = 0;
@@ -119,14 +132,30 @@ export class WaveManager {
     } else if (n % WAVES.miniBossEvery === 0) {
       capstones.push("miniboss");
     }
-    // Spread multiple capstones across the wave (boss first, mini-boss later) so
-    // they don't descend on the same spawn tick. Splice from the last index back
-    // so earlier insertions don't shift later ones.
+    // Everything that rides ON TOP of the budget, each at its own fraction of
+    // the adds. Multiple capstones are spread apart (boss first, mini-boss
+    // later) so they don't descend on the same spawn tick.
     const points = [WAVES.capstoneSpawnFraction, 0.66];
-    for (let i = capstones.length - 1; i >= 0; i--) {
-      const at = Math.floor(budget * points[i]);
-      queue.splice(at, 0, capstones[i]);
+    const extras = capstones.map((kind, i) => ({
+      kind,
+      at: Math.floor(budget * points[i]),
+    }));
+
+    // The Lode is spliced in the same way but is NOT a capstone and is never
+    // suppressed by one: from wave 27 every Lode wave also carries a mini-boss,
+    // and waves 30/60 a Boss too — suppressing would delete the feature from the
+    // whole endgame, which is exactly where the payout matters (ADR-0021).
+    if (isLodeWave(n)) {
+      extras.push({
+        kind: "lode",
+        at: Math.floor(budget * LODE.spawnFraction),
+      });
     }
+
+    // Splice from the last index back so earlier insertions don't shift later
+    // ones — every `at` stays an offset into the original budget.
+    extras.sort((a, b) => b.at - a.at);
+    for (const extra of extras) queue.splice(extra.at, 0, extra.kind);
     return queue;
   }
 
@@ -182,6 +211,9 @@ export class WaveManager {
         break;
       case "station":
         this.enemies.spawnStation(this.mods, this.waveNumber);
+        break;
+      case "lode":
+        this.enemies.spawnLode(this.mods);
         break;
     }
   }

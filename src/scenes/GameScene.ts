@@ -11,6 +11,7 @@ import {
   VIRTUAL_WIDTH,
   VIRTUAL_HEIGHT,
   FONT_FAMILY,
+  lodeBurstCount,
 } from "../config";
 import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
@@ -98,6 +99,9 @@ export class GameScene implements Scene {
         tint: damageTierColor(damage),
       });
     },
+    // The Lode's drip (ADR-0021): an ordinary Star, which sinks out of the high
+    // lane toward the player's zone on its own (ADR-0022).
+    dropStar: (x, y) => this.stars.spawn(x, y),
   };
 
   /** Per-frame inputs for the DroneSwarm; x/y/level/enemies refreshed each tick. */
@@ -709,8 +713,11 @@ export class GameScene implements Scene {
       if (!enemy.active) continue;
       if (pointInRadius(enemy.x, enemy.y, enemy.radius, this.player)) {
         // Ramming the Boss hurts the player but never destroys it — otherwise a
-        // suicide-ram would trivially one-shot the wave's marquee enemy.
-        if (enemy.kind === "boss") {
+        // suicide-ram would trivially one-shot the wave's marquee enemy. The
+        // Lode is exempt for the same reason and then some: a ram that killed it
+        // would hand over the whole payout for one hit of HP, bypassing the
+        // damage check that is the entire point of the enemy (ADR-0021).
+        if (enemy.kind === "boss" || enemy.kind === "lode") {
           this.player.takeHit(enemy.contactDamage);
           return;
         }
@@ -730,7 +737,11 @@ export class GameScene implements Scene {
     this.run.score += enemy.scoreValue;
     this.run.kills += 1;
     const guaranteed = enemy.kind === "miniboss" || enemy.kind === "boss";
-    if (guaranteed || Math.random() < STAR.dropChance) {
+    if (enemy.kind === "lode") {
+      // A killed Lode pays its whole wave-scaled shower instead of rolling the
+      // ordinary 5% drop — the burst IS the reward (ADR-0021).
+      this.burstStars(enemy.x, enemy.y);
+    } else if (guaranteed || Math.random() < STAR.dropChance) {
       this.stars.spawn(enemy.x, enemy.y);
     }
     this.enemies.handleDeath(enemy);
@@ -739,7 +750,8 @@ export class GameScene implements Scene {
     // draw from the explosion variant pool (ADR-0014).
     if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
     else {
-      playSound("explosion", 0.4);
+      // A Lode is a 320px rock coming apart — the same boom, a touch louder.
+      playSound("explosion", enemy.kind === "lode" ? 0.6 : 0.4);
       // Debris + Kill Burst on "clean" kills only — Asteroids already fragment
       // into smaller Asteroids (handleDeath above), so they don't also shed
       // debris chunks or flash a central burst. The Kill Burst is the central
@@ -749,6 +761,26 @@ export class GameScene implements Scene {
         this.debris.spawn(enemy.x, enemy.y, enemy.sprite.scale.x);
         this.effects.explode(enemy.x, enemy.y, enemy.sprite.scale.x);
       }
+    }
+  }
+
+  /**
+   * A Lode's death payout (ADR-0021): a wave-scaled shower of Stars flung out
+   * through the explosion in uniformly random directions. Each rides a launch
+   * impulse that damps out after ~140-250px — matched to the Kill Burst's
+   * footprint at this sprite scale — so the loot visibly bursts open like a
+   * treasure chest and then settles into a cluster the player can sweep, rather
+   * than scattering off screen. Partial collection is an accepted outcome: it is
+   * what gives the player's Pickup Range levels (the "Tractor Beam" card) their
+   * moment.
+   */
+  private burstStars(x: number, y: number): void {
+    const count = lodeBurstCount(this.waves.currentWave);
+    const spread = STAR.burstSpeedMax - STAR.burstSpeedMin;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = STAR.burstSpeedMin + Math.random() * spread;
+      this.stars.spawn(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed);
     }
   }
 

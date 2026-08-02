@@ -511,6 +511,69 @@ export const SPACESTATION = {
   muzzleOffset: 90,
 } as const;
 
+/** Lode (Asteroids-Sheet frame 1): a boss-HP golden rock that drives across the
+ *  TOP of the field once every `everyWaves` waves from `startWave`, leaking Stars
+ *  as it passes and bursting into a shower of them if it is killed before it
+ *  leaves. It never shoots and never descends into the player's zone — it is an
+ *  opportunity under a deadline, not a capstone: the wave clears whether or not it
+ *  died, and an escaping Lode is silent. See ADR-0021. */
+export const LODE = {
+  /** 64x64 native at 5x = 320px — bigger than the SpaceStation (216px), smaller
+   *  than the Boss (384px). The shimmering silhouette IS the telegraph. */
+  scale: 5,
+  /** Base HP, at Boss level, scaled by the wave hpMult and by NOTHING else: no
+   *  per-appearance compounding, so the event never becomes un-cashable (ADR-0021). */
+  hp: 2000,
+  /** Mini-boss-grade contact damage. The Lode SURVIVES the contact (like the
+   *  Boss) — otherwise a ram would collect the payout without the damage check. */
+  contactDamage: 40,
+  /** Collision radius as a fraction of the sprite half-width (the Asteroid's). */
+  radiusFactor: 0.78,
+  /** The top-of-field band its lane Y is randomised inside (virtual px). */
+  laneMinY: 160,
+  laneMaxY: 320,
+  /** Seconds for one edge-to-edge traverse. Speed is DERIVED from this at spawn
+   *  ((field width + sprite width) / traverseSeconds), so the window stays exactly
+   *  this long at every wave — the Lode deliberately ignores the wave speedMult
+   *  (the Mine/Bomber precedent). This is the whole deadline: retune it here. */
+  traverseSeconds: 8,
+  /** Cosmetic tumble (rad/s, random direction) — it is a rock, so it rolls. */
+  spin: 0.25,
+  /** Gold base tint, shimmering to pale and back on shimmerPeriod seconds. */
+  baseTint: 0xffd24a,
+  shimmerTint: 0xfff0a8,
+  shimmerPeriod: 1.5,
+  /** Seconds between the Stars it drips while alive (~4-5 per traverse). Held
+   *  until the body is fully on-screen, so nothing drops outside the field. */
+  dripInterval: 1.6,
+  /** First wave a Lode appears in, and the cadence after it: 15, 18, 21, 24… The
+   *  two knobs that move the whole event; see isLodeWave. */
+  startWave: 15,
+  everyWaves: 3,
+  /** Spliced into the spawn queue after this fraction of the wave's adds — and
+   *  ADDED ON TOP of the budget, never consuming an enemy slot (ADR-0011). */
+  spawnFraction: 0.5,
+  /** Death-burst Stars at startWave; +1 per cadence step after it (lodeBurstCount). */
+  burstCountBase: 10,
+} as const;
+
+/** True on the waves a Lode crosses: startWave, then every everyWaves after it.
+ *  Derived from the wave number and holding no state, so the schedule and the
+ *  payout curve (lodeBurstCount) can never drift apart. */
+export function isLodeWave(wave: number): boolean {
+  return (
+    wave >= LODE.startWave && (wave - LODE.startWave) % LODE.everyWaves === 0
+  );
+}
+
+/** Stars flung out by a Lode's death burst: 10 at wave 15, +1 per cadence step
+ *  (15 at wave 30, 20 at wave 45), uncapped. A pure function of the wave — this
+ *  is the whole payout curve, and it is what makes the reward testable. */
+export function lodeBurstCount(wave: number): number {
+  const steps = Math.floor((wave - LODE.startWave) / LODE.everyWaves);
+  return LODE.burstCountBase + Math.max(0, steps);
+}
+
 /** Enemy HP Bar: a thin flat-red bar that appears above an enemy once it has
  *  taken damage (hp < maxHp) and tracks remaining HP as a fill length — no
  *  number. Width tracks the enemy's unrotated sprite width; height and the gap
@@ -611,6 +674,8 @@ export const XP = {
   warden: 14,
   bomber: 6,
   station: 16,
+  /** Boss parity — a Lode carries Boss HP and must die inside 8s (ADR-0021). */
+  lode: 60,
   /** XP granted by collecting a Star. */
   star: 12,
   /** First level-up needs this much XP (front-loaded so the first few come
@@ -637,11 +702,17 @@ export const SCORE = {
   warden: 100,
   bomber: 35,
   station: 130,
+  /** Boss parity, matching the Lode's XP. */
+  lode: 600,
   /** Wave-clear bonus = waveClearBase * wave number. */
   waveClearBase: 25,
 } as const;
 
-/** Star pickup: the only collectible in v1 (XP only). Native-size coin. */
+/** Star pickup: the only collectible in v1 (XP only). Native-size coin.
+ *  Every Star sinks gently downward, and a Star may be launched with an initial
+ *  impulse that decays into that sink (ADR-0022) — that is what lets a Lode's
+ *  death payout ride outwards on its explosion and its high-lane drip fall into
+ *  the player's zone, with no second pickup type. */
 export const STAR = {
   scale: 3,
   /** Seconds before an uncollected star expires. */
@@ -654,6 +725,18 @@ export const STAR = {
   magnetEase: 9,
   /** Blink during the final N seconds before expiry. */
   blinkBefore: 1.5,
+  /** Constant downward drift (virtual px/s) applied to EVERY Star, on top of any
+   *  launch impulse: ~350px over the 5s lifetime, so a drop sinks toward the
+   *  player's zone rather than sitting pinned where its kill happened. */
+  sinkSpeed: 70,
+  /** Launch-impulse speed range (virtual px/s) for a burst Star. */
+  burstSpeedMin: 250,
+  burstSpeedMax: 450,
+  /** Exponential decay of the launch impulse, per second. Outward drift settles
+   *  at ≈ speed / burstDamping (≈140-250px) — matched to the Lode's Kill Burst
+   *  footprint, so the loot visibly rides the explosion and stays a sweepable
+   *  cluster instead of scattering off screen. */
+  burstDamping: 1.8,
 } as const;
 
 /** Debris: the cosmetic ship-fragment shower flung out on a "clean" enemy kill
