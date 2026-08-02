@@ -518,9 +518,10 @@ export const SPACESTATION = {
  *  opportunity under a deadline, not a capstone: the wave clears whether or not it
  *  died, and an escaping Lode is silent. See ADR-0021. */
 export const LODE = {
-  /** 64x64 native at 5x = 320px — bigger than the SpaceStation (216px), smaller
-   *  than the Boss (384px). The shimmering silhouette IS the telegraph. */
-  scale: 5,
+  /** 64x64 native at 2.5x = 160px. Larger than an Asteroid (128px) but smaller
+   *  than the SpaceStation (216px), so the gold shimmer — not the silhouette —
+   *  is what has to carry the telegraph at this size. */
+  scale: 2.5,
   /** Base HP, at Boss level, scaled by the wave hpMult and by NOTHING else: no
    *  per-appearance compounding, so the event never becomes un-cashable (ADR-0021). */
   hp: 2000,
@@ -533,18 +534,21 @@ export const LODE = {
   laneMinY: 160,
   laneMaxY: 320,
   /** Seconds for one edge-to-edge traverse. Speed is DERIVED from this at spawn
-   *  ((field width + sprite width) / traverseSeconds), so the window stays exactly
-   *  this long at every wave — the Lode deliberately ignores the wave speedMult
-   *  (the Mine/Bomber precedent). This is the whole deadline: retune it here. */
-  traverseSeconds: 8,
+   *  ((field width + sprite width) / traverseSeconds ≈ 130 px/s), so the window
+   *  stays exactly this long at every wave — the Lode deliberately ignores the
+   *  wave speedMult (the Mine/Bomber precedent). This is the whole deadline, and
+   *  it sets the DPS the check asks for: retune it here. */
+  traverseSeconds: 16,
   /** Cosmetic tumble (rad/s, random direction) — it is a rock, so it rolls. */
   spin: 0.25,
   /** Gold base tint, shimmering to pale and back on shimmerPeriod seconds. */
   baseTint: 0xffd24a,
   shimmerTint: 0xfff0a8,
   shimmerPeriod: 1.5,
-  /** Seconds between the Stars it drips while alive (~4-5 per traverse). Held
-   *  until the body is fully on-screen, so nothing drops outside the field. */
+  /** Seconds between the Stars it drips while alive (~9 over the 16s traverse).
+   *  Emitted only while the body is fully on-screen, so nothing drops outside
+   *  the field. The count is dripInterval against traverseSeconds — raise this
+   *  to 3.2 to put the consolation payout back to the original ~4-5. */
   dripInterval: 1.6,
   /** First wave a Lode appears in, and the cadence after it: 15, 18, 21, 24… The
    *  two knobs that move the whole event; see isLodeWave. */
@@ -674,7 +678,8 @@ export const XP = {
   warden: 14,
   bomber: 6,
   station: 16,
-  /** Boss parity — a Lode carries Boss HP and must die inside 8s (ADR-0021). */
+  /** Boss parity — a Lode carries Boss HP and must die inside its traverse
+   *  window (ADR-0021). */
   lode: 60,
   /** XP granted by collecting a Star. */
   star: 12,
@@ -733,9 +738,11 @@ export const STAR = {
   burstSpeedMin: 250,
   burstSpeedMax: 450,
   /** Exponential decay of the launch impulse, per second. Outward drift settles
-   *  at ≈ speed / burstDamping (≈140-250px) — matched to the Lode's Kill Burst
-   *  footprint, so the loot visibly rides the explosion and stays a sweepable
-   *  cluster instead of scattering off screen. */
+   *  at ≈ speed / burstDamping (≈140-250px), keeping the payout a sweepable
+   *  cluster instead of scattering off screen. This was originally matched to
+   *  the Lode's Kill Burst footprint at sprite scale 5; the Lode is now scale
+   *  2.5, so the shower flings wider than its explosion — halve the burst speeds
+   *  to restore the match (see ADR-0022). */
   burstDamping: 1.8,
 } as const;
 

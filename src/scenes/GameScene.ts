@@ -750,7 +750,7 @@ export class GameScene implements Scene {
     // draw from the explosion variant pool (ADR-0014).
     if (isExplosive(enemy.kind)) this.detonateExplosive(enemy);
     else {
-      // A Lode is a 320px rock coming apart — the same boom, a touch louder.
+      // A Lode is a big rock coming apart — the same boom, a touch louder.
       playSound("explosion", enemy.kind === "lode" ? 0.6 : 0.4);
       // Debris + Kill Burst on "clean" kills only — Asteroids already fragment
       // into smaller Asteroids (handleDeath above), so they don't also shed

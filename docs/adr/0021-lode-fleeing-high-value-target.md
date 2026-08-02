@@ -11,14 +11,16 @@ By Wave 15 a Run has settled into a rhythm the player already knows. Every enemy
 Every high-HP enemy so far has been a **capstone** (ADR-0011, ADR-0016): it anchors the Wave, never flees, and the Wave cannot clear until it dies. The Lode inverts every one of those properties.
 
 - **It flees.** The Wave clears whether or not it died. A Lode that escapes costs the player nothing but the loot, so declining the opportunity is a legitimate play when survival is the smarter call. There is no penalty, no message, and no sound on its escape — consistent with every other enemy that flees.
-- **It is on a clock.** ~8 seconds edge to edge. That deadline is the entire design: it converts "do I have enough DPS?" from a question about patience into a question about *burst*.
-- **It is not a gate but it does hold the clear.** The existing rule (queue empty *and* field clear) means a Lode still crossing keeps the Wave open. That is intended — it guarantees the player always gets the whole window even after clearing the adds — and it is bounded by the ~8s traverse.
+- **It is on a clock.** ~16 seconds edge to edge, at a slow ~130 px/s drift. That deadline is the entire design: it converts "do I have enough DPS?" from a question about patience into a question about *sustained output under distraction*.
+- **It is not a gate but it does hold the clear.** The existing rule (queue empty *and* field clear) means a Lode still crossing keeps the Wave open. That is intended — it guarantees the player always gets the whole window even after clearing the adds — and it is bounded by the ~16s traverse.
 
 ## The decisions
 
 ### A fixed window that ignores `speedMult`
 
 Traverse speed is derived from `LODE.traverseSeconds` and the field width, and deliberately **ignores the Wave `speedMult`** (the Mine and Bomber precedent). If it scaled, the window would shrink as the Run progressed and what the player learned at Wave 15 would stop applying at Wave 45. The window is the contract; it stays constant. Ramping it by Wave was considered and rejected for exactly that reason.
+
+**Amended after playtest:** the window was originally 8s and the sprite scale 5 (a 320px footprint). Both were halved — a 160px rock at ~130 px/s over ~16s. The Lode is no longer the biggest thing on the field, so the **gold shimmer, not the silhouette, now carries the telegraph**; and the DPS the check asks for is halved (see Consequences). The window is still the single knob, and it is still constant across every Wave.
 
 ### HP on `hpMult` only — never per-appearance
 
@@ -42,14 +44,16 @@ The gold is the Lode's identity, and the shimmer needs somewhere to return to. T
 
 ### Rewards
 
-- **Drip:** one Star roughly every 1.6s (~4-5 per traverse), held until the body is fully on screen so nothing spawns outside the field (the SpaceStation's hold-fire precedent). Even a failed attempt pays for the damage dealt and the attention spent. The dripped Stars sink out of the high lane on their own (ADR-0022), so a consolation prize dropped near the top is actually collectable.
+- **Drip:** one Star roughly every 1.6s (~9 across the 16s traverse), emitted only while the body is fully on screen so nothing spawns outside the field (the SpaceStation's hold-fire precedent). The count is a consequence of `dripInterval` against `traverseSeconds`, not a knob of its own — doubling the window doubled the consolation payout; `dripInterval` is where to claw that back. Even a failed attempt pays for the damage dealt and the attention spent. The dripped Stars sink out of the high lane on their own (ADR-0022), so a consolation prize dropped near the top is actually collectable.
 - **Burst:** `10 + floor((wave - startWave) / everyWaves)` Stars — 10 at Wave 15, 15 at Wave 30, 20 at Wave 45, uncapped. A **pure exported function of the Wave number**, which is what makes the payout testable with no rendering. It replaces the ordinary per-kill Star roll; a Lode does not also roll the 5% chance.
 - **Kill award:** XP and Score at Boss parity.
 - **Death effects:** a "clean kill" under ADR-0017 — it does not split, so it gets the untinted Kill Burst sized to its sprite scale plus Debris chunks (~3 from the existing count-from-scale rule), and the standard kill boom at slightly raised volume. It never splits into Asteroids.
 
 ## Consequences
 
-- **The known tuning risk:** at Wave 15 the Lode asks for roughly 670 sustained DPS across the 8s window while adds keep spawning. Early Lodes will often escape. That is the intended design — a check the player can fail, with the drip as consolation — but `LODE.hp` is a single knob and is the first thing to reach for if playtesting says it is too steep.
+- **The DPS the check asks for, after the window doubled:** at Wave 15 the Lode now asks for roughly **335** sustained DPS across its 16s window (it was 670 across 8s), and ~635 at Wave 30 where HP has climbed but the window has not. Early Lodes should now be genuinely killable rather than usually escaping. `LODE.hp` and `LODE.traverseSeconds` are the two knobs; HP is the one to reach for if the event becomes free loot.
+- **It is no longer visibly the largest thing on the field.** At 160px it sits between an Asteroid (128px) and a SpaceStation (216px), where at 320px it out-massed everything but the Boss. The original sizing was justified on exactly that "registers even while you are busy at the bottom" reading, so the telegraph now rests entirely on the gold shimmer. Worth a specific look in playtest: if a Lode goes unnoticed on a busy Wave, `LODE.scale` is the knob, and the shimmer contrast (`baseTint`/`shimmerTint`/`shimmerPeriod`) is the fallback.
+- Two effects size themselves off `sprite.scale.x` and so shrank automatically: the Kill Burst, and the Debris count (~2 chunks now, down from ~3). The collision radius likewise halved to ~62px.
 - Drones (400px range) cannot reach the top lane from the player's usual position, so the Lode is primarily a gun-and-Missile check. This is a consequence of geometry, not a special case — it is a normal target for every weapon and Modifier.
 - Enemies previously despawned only off the bottom, with the Mine as the sole exception. The Lode joins it in the side-exit case.
 - `LODE.startWave` and `LODE.everyWaves` are the two knobs that move the whole event. The scheduling *decision* — which waves carry a Lode and where it is spliced — lives entirely in the one `composeWave` method, keeping ADR-0011's single-seam property; `isLodeWave` and `lodeBurstCount` sit beside the `LODE` block in `config.ts` because both are pure reads of those knobs, and keeping the cadence and the payout curve next to each other is what stops them drifting apart.
