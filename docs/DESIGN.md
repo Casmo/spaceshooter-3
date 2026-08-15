@@ -44,7 +44,7 @@ Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pa
 | Upgrade | Cap | Rarity (weight) | Notes |
 |---|---|---|---|
 | Damage | ∞ | common (12) | +6 damage per level |
-| Engine | 10 | common (12) | mouse sensitivity (x2.25 at cap) + follow responsiveness, which also raises top speed |
+| Engine | 10 | common (12) | mouse sensitivity (x2.25 at cap) + follow responsiveness, which also raises top speed (~1500 → ~2080px/s at 60Hz; frame-rate dependent, see ADR-0023) |
 | Fire Rate | ∞ | common (12) | **diminishing**: `cooldown *= 0.95`/lvl, asymptotic, never 0 |
 | Tractor Beam | 5 | common (12) | larger star pickup range (maxes usefulness by lvl 5) |
 | Pierce | 5 | uncommon (8) | bullets pass through +1 enemy/lvl |

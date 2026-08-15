@@ -35,10 +35,12 @@ const clamp = (v: number, lo: number, hi: number): number =>
  * `sensitivity` is the *effective* value — the player's setting already
  * multiplied by the Engine upgrade bonus. This module knows nothing of either.
  *
- * Order matters: cap the lead radially first (preserving the gesture's
- * direction), then clamp to bounds. A bounds clamp can only ever pull the
- * target closer to the ship, so it cannot break the lead invariant; doing it
- * the other way round could.
+ * Order doesn't affect correctness here — the bounds box is convex and the
+ * radial cap places the target on the segment between the (in-bounds) ship
+ * and the raw target, so either order preserves both invariants. Cap-then-
+ * clamp is done for feel instead: it keeps the target on the gesture's actual
+ * direction until the bounds box forces a compromise, rather than letting an
+ * edge-hugging bounds clamp skew the direction before the radial cap locks it in.
  */
 export function advanceTarget(
   target: Point,

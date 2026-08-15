@@ -61,15 +61,19 @@ export const PLAYER = {
   sensitivityStep: 0.2,
   /** Eased-follow smoothing toward the steer-target, per second (higher =
    *  snappier). The Engine upgrade raises it. Together with maxLead this sets
-   *  the ship's top speed: followResponse * maxLead (ADR-0023). */
-  followResponse: 20,
-  /** How far the steer-target may lead the ship (virtual px). Bounds the
-   *  trailing lag that caused rubber-banding on direction reversals, and — since
-   *  ship velocity is followResponse * lead — doubles as the speed limit. This
-   *  replaces the old maxSpeed teleport-guard, which capped the step instead and
-   *  so switched the ship between two different motion laws mid-flick
+   *  the ship's top speed, but `followResponse * maxLead` is only the dt->0
+   *  asymptote — see maxLead's comment for the speed actually achieved
    *  (ADR-0023). */
-  maxLead: 75,
+  followResponse: 20,
+  /** How far the steer-target may lead the ship (virtual px) — this is what
+   *  bounds trailing lag. It also caps top speed, but NOT at followResponse *
+   *  maxLead: each frame re-clamps the lead to this value and then only eases
+   *  `1 - e^(-followResponse*dt)` of it, so the achieved ceiling is
+   *  `maxLead * (1 - e^(-followResponse*dt)) / dt` — frame-rate dependent, ≈1500
+   *  px/s at 60Hz. 88 is tuned to hit that 60Hz figure. This replaces the old
+   *  maxSpeed teleport-guard, which capped the step instead and so switched the
+   *  ship between two different motion laws mid-flick (ADR-0023). */
+  maxLead: 88,
   /** Starting max HP for a fresh run. HP upgrade raises this later. */
   maxHp: 100,
   /** Starting lives for a fresh run. */

@@ -127,8 +127,9 @@ export class Player {
   }
 
   /**
-   * Shove the steer-target by a mouse delta (in virtual px), bounded by the lead
-   * cap and the play area. The ship then chases the target in `move`.
+   * Shove the steer-target by a mouse delta (in CSS px — `sensitivity` is what
+   * converts that to world px), bounded by the lead cap and the play area. The
+   * ship then chases the target in `move`.
    */
   steer(dx: number, dy: number): void {
     const next = advanceTarget(

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { advanceTarget, easeToward, type SteerBounds } from "./steering";
+import { PLAYER } from "../config";
 
 /**
  * Invariant tests for the pure steering math. These are the properties that
@@ -48,7 +49,7 @@ describe("advanceTarget", () => {
   });
 
   it("keeps the target inside the play bounds", () => {
-    const t = advanceTarget(
+    const low = advanceTarget(
       { x: 10, y: 10 },
       10,
       10,
@@ -58,8 +59,23 @@ describe("advanceTarget", () => {
       MAX_LEAD,
       BOUNDS,
     );
-    expect(t.x).toBeGreaterThanOrEqual(BOUNDS.minX);
-    expect(t.y).toBeGreaterThanOrEqual(BOUNDS.minY);
+    expect(low.x).toBeGreaterThanOrEqual(BOUNDS.minX);
+    expect(low.y).toBeGreaterThanOrEqual(BOUNDS.minY);
+
+    // The lower-bound case above would still pass if the clamp's upper bound
+    // were silently replaced by Infinity — pin the max side too.
+    const high = advanceTarget(
+      { x: 1910, y: 1070 },
+      1910,
+      1070,
+      9999,
+      9999,
+      1,
+      MAX_LEAD,
+      BOUNDS,
+    );
+    expect(high.x).toBeLessThanOrEqual(BOUNDS.maxX);
+    expect(high.y).toBeLessThanOrEqual(BOUNDS.maxY);
   });
 
   it("bounds clamping only ever shortens the lead", () => {
@@ -126,5 +142,85 @@ describe("easeToward", () => {
     // worst case the ship will ever see. Response 30 is the maxed-Engine value.
     const gap = 75;
     expect(easeToward(0, gap, 30, 0.1)).toBeLessThan(gap);
+  });
+});
+
+describe("advanceTarget + easeToward composed (the real per-frame loop)", () => {
+  // The test above shows easeToward alone composes exactly across dt, because
+  // it eases toward a FIXED target. In the real game loop the target isn't
+  // fixed: advanceTarget re-pegs it to exactly maxLead ahead of the ship's
+  // pre-move position every single frame (a violent flick saturates this).
+  // That re-pegging breaks the composition property — each frame only closes
+  // `1 - e^(-r*dt)` of a lead that gets reset before the next frame, so the
+  // steady-state speed this loop converges to is NOT frame-rate independent.
+  // It equals `maxLead * (1 - e^(-r*dt)) / dt`, approaching the naive
+  // `r * maxLead` asymptote only as dt -> 0 (see config.ts PLAYER.maxLead and
+  // ADR-0023). This test pins that true, frame-rate-dependent ceiling so a
+  // future reader can't mistake the composed loop for inheriting easeToward's
+  // frame-rate independence.
+  // Bounds wide enough to never engage — this suite is about the lead cap
+  // and the ease, not the bounds clamp (that's covered above).
+  const WIDE_BOUNDS: SteerBounds = {
+    minX: -1e9,
+    maxX: 1e9,
+    minY: -1e9,
+    maxY: 1e9,
+  };
+
+  function saturatedSpeed(dt: number, response: number): number {
+    let shipX = 0;
+    let shipY = 0;
+    let targetX = 0;
+    let targetY = 0;
+    // A flick large enough to peg the lead cap every single frame.
+    const hugeDelta = 1e6;
+
+    // Run long enough to reach steady state.
+    for (let i = 0; i < 500; i++) {
+      const next = advanceTarget(
+        { x: targetX, y: targetY },
+        shipX,
+        shipY,
+        hugeDelta,
+        0,
+        1,
+        PLAYER.maxLead,
+        WIDE_BOUNDS,
+      );
+      targetX = next.x;
+      targetY = next.y;
+
+      const nextShipX = easeToward(shipX, targetX, response, dt);
+      const nextShipY = easeToward(shipY, targetY, response, dt);
+      const speed = Math.hypot(nextShipX - shipX, nextShipY - shipY) / dt;
+      shipX = nextShipX;
+      shipY = nextShipY;
+
+      if (i === 499) return speed;
+    }
+    throw new Error("unreachable");
+  }
+
+  it("saturates at maxLead * (1 - e^(-r*dt)) / dt, not the r*maxLead asymptote", () => {
+    const dt = 1 / 60;
+    const r = PLAYER.followResponse;
+    const expected = (PLAYER.maxLead * (1 - Math.exp(-r * dt))) / dt;
+
+    expect(saturatedSpeed(dt, r)).toBeCloseTo(expected, 6);
+    // The true ceiling sits below the dt->0 asymptote r*maxLead — this is the
+    // gap Finding 1 called out (the branch had documented the asymptote as if
+    // it were the achieved speed).
+    expect(expected).toBeLessThan(r * PLAYER.maxLead);
+  });
+
+  it("is NOT frame-rate independent: a smaller dt converges to a different speed", () => {
+    const r = PLAYER.followResponse;
+    const speed60 = saturatedSpeed(1 / 60, r);
+    const speed144 = saturatedSpeed(1 / 144, r);
+
+    // Both approach r*maxLead as dt shrinks, but they don't match each other —
+    // unlike easeToward alone, which is exactly frame-rate independent.
+    expect(speed144).toBeGreaterThan(speed60);
+    expect(speed144).toBeLessThan(r * PLAYER.maxLead);
   });
 });
