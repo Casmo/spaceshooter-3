@@ -9,7 +9,7 @@ A vertical-scrolling roguelike shmup in PixiJS v8 + TypeScript + Vite. Glossary 
 - **Central tuning:** every tunable (caps, weights, curves, costs, lifetimes, percentages) lives in `config.ts`.
 
 ## 2. Controls
-- **Mouse only, relative.** Under Pointer Lock, mouse *motion* shoves a free-floating target the ship eased-follows — not the cursor's position. Sensitivity is the Engine upgrade's headline effect. See docs/adr/0006 (supersedes the original cursor-follow scheme).
+- **Mouse only, relative.** Under Pointer Lock, mouse *motion* shoves a free-floating target the ship eased-follows — not the cursor's position. The target may never lead the ship by more than `PLAYER.maxLead`, which bounds lag and caps top speed in one rule. Sensitivity is a persisted player setting; the Engine upgrade multiplies it. See docs/adr/0006 and docs/adr/0023.
 - **Left mouse = fire**, hold-to-fire with a cooldown.
 - **Esc / P** = toggle pause (Resume / Restart / Quit-to-Menu overlay).
 
@@ -44,7 +44,7 @@ Drawn 3 at a time on Level-up, weighted-random, distinct, not-yet-maxed. Game pa
 | Upgrade | Cap | Rarity (weight) | Notes |
 |---|---|---|---|
 | Damage | ∞ | common (12) | +6 damage per level |
-| Engine | 10 | common (12) | mouse sensitivity + follow responsiveness |
+| Engine | 10 | common (12) | mouse sensitivity (x2.25 at cap) + follow responsiveness, which also raises top speed |
 | Fire Rate | ∞ | common (12) | **diminishing**: `cooldown *= 0.95`/lvl, asymptotic, never 0 |
 | Tractor Beam | 5 | common (12) | larger star pickup range (maxes usefulness by lvl 5) |
 | Pierce | 5 | uncommon (8) | bullets pass through +1 enemy/lvl |

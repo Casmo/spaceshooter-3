@@ -2,6 +2,8 @@
 
 > **Amended by ADR-0008.** The lock lifecycle below ("we exit the lock ourselves when the Upgrade Prompt opens" and the expected/unexpected-release distinction) no longer applies: the Upgrade Prompt now *keeps* the lock and draws its own Menu Cursor. The relative-Steering core of this ADR still stands.
 
+> **Amended by ADR-0023.** Three changes: mouse deltas now map to world distance, not screen distance (the `/scale` normalization is dropped for steering); `maxSpeed` no longer exists — a cap on the steer-target's *lead* bounds speed instead, so the Engine upgrade now does raise top speed; and sensitivity is a persisted player setting that Engine multiplies rather than a constant it adds to. The relative-Steering core below still stands.
+
 The ship no longer eased-follows the cursor's absolute position. Instead the mouse acts as a **relative steering device**: each frame we accumulate raw `movementX/Y` deltas, normalize them into virtual space, and shove a free-floating target point by `delta · sensitivity`; the ship then eases toward that target with the existing exponential smoothing. The cursor's on-screen position is now irrelevant — only its *motion* matters.
 
 We picked relative displacement over the old absolute-position model because the cursor-as-anchor scheme pinned the ship wherever the cursor sat on screen, which broke down at window edges and tied the feel to screen geography rather than to flying. We kept the smoothing pass (rather than a raw 1:1 mapping) at the player's request — the ship still chases a target, the target is just driven by motion now. `maxSpeed` survives only as a fixed teleport-guard clamp on the step; it is no longer an upgrade-scaled "chase speed."
