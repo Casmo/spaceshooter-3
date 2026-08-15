@@ -13,13 +13,15 @@ import { ProjectilePool } from "./ProjectilePool";
 import { createModifiers, type WeaponModifiers } from "./WeaponModifiers";
 import { resolveBulletVisual } from "./weaponVisual";
 import { playSound } from "./audio";
+import { advanceTarget, easeToward, type SteerBounds } from "./steering";
 
 /**
  * The player ship. Steered by relative mouse motion (see docs/adr/0006): each
  * mouse delta shoves a free-floating target point, and the ship eased-follows
- * that point (smoothed, capped by a teleport-guard step). Fires the base weapon
- * on a cooldown while the trigger is held, and tracks HP / lives with
- * invulnerability frames.
+ * that point. The target may never lead the ship by more than PLAYER.maxLead,
+ * which bounds trailing lag and caps top speed in one rule (ADR-0023). Fires the
+ * base weapon on a cooldown while the trigger is held, and tracks HP / lives
+ * with invulnerability frames.
  */
 export class Player {
   readonly sprite: Sprite;
@@ -33,12 +35,13 @@ export class Player {
   // Upgradable stats (mutated by the upgrade system).
   damage: number = WEAPON.damage;
   cooldown: number = WEAPON.cooldown;
-  /** Steer-target travel per unit of mouse motion; raised by the Engine upgrade. */
+  /** Steer-target travel per unit of mouse motion. The scene syncs this from the
+   *  player's persisted setting; the Engine upgrade multiplies it separately. */
   sensitivity: number = PLAYER.sensitivity;
   followResponse: number = PLAYER.followResponse;
   pickupRange: number = PLAYER.basePickupRange;
-  /** Fixed teleport-guard cap on a single frame's step (not upgrade-scaled). */
-  private readonly maxSpeed: number = PLAYER.maxSpeed;
+  /** How far the steer-target may lead the ship (ADR-0023). */
+  private readonly maxLead: number = PLAYER.maxLead;
 
   /** Free-floating point the mouse shoves around; the ship eased-follows it. */
   private targetX: number = PLAYER.startX;
@@ -66,6 +69,9 @@ export class Player {
   private fireTimer = 0;
   private readonly halfWidth: number;
   private readonly halfHeight: number;
+  /** Play area the steer-target is confined to. Derived from the sprite size, so
+   *  it is fixed once the ship's texture is known. */
+  private readonly bounds: SteerBounds;
   /** Banking frames: 0 = hard-left .. 2 = centre .. 4 = hard-right. */
   private readonly bankFrames: Texture[] = getFrames("ship");
 
@@ -81,6 +87,12 @@ export class Player {
     this.halfHeight = this.sprite.height / 2;
     this.hitRadius =
       Math.min(this.halfWidth, this.halfHeight) * PLAYER.hitboxRadiusFactor;
+    this.bounds = {
+      minX: this.halfWidth,
+      maxX: VIRTUAL_WIDTH - this.halfWidth,
+      minY: this.halfHeight,
+      maxY: VIRTUAL_HEIGHT - this.halfHeight,
+    };
   }
 
   get x(): number {
@@ -111,21 +123,22 @@ export class Player {
   }
 
   /**
-   * Shove the steer-target by a mouse delta (already converted to virtual px),
-   * scaled by sensitivity and clamped to the play bounds. The ship then chases
-   * the target in `move`.
+   * Shove the steer-target by a mouse delta (in virtual px), bounded by the lead
+   * cap and the play area. The ship then chases the target in `move`.
    */
   steer(dx: number, dy: number): void {
-    this.targetX = clamp(
-      this.targetX + dx * this.sensitivity,
-      this.halfWidth,
-      VIRTUAL_WIDTH - this.halfWidth,
+    const next = advanceTarget(
+      { x: this.targetX, y: this.targetY },
+      this.sprite.x,
+      this.sprite.y,
+      dx,
+      dy,
+      this.sensitivity,
+      this.maxLead,
+      this.bounds,
     );
-    this.targetY = clamp(
-      this.targetY + dy * this.sensitivity,
-      this.halfHeight,
-      VIRTUAL_HEIGHT - this.halfHeight,
-    );
+    this.targetX = next.x;
+    this.targetY = next.y;
   }
 
   /**
@@ -156,36 +169,26 @@ export class Player {
   }
 
   private move(dt: number): void {
-    const dx = this.targetX - this.sprite.x;
-    const dy = this.targetY - this.sprite.y;
+    const prevX = this.sprite.x;
 
-    // Frame-rate independent exponential smoothing toward the steer-target.
-    const ease = 1 - Math.exp(-this.followResponse * dt);
-    let stepX = dx * ease;
-    let stepY = dy * ease;
-
-    // Teleport-guard: cap the step so a violent flick can't warp the ship.
-    const stepLen = Math.hypot(stepX, stepY);
-    const maxStep = this.maxSpeed * dt;
-    if (stepLen > maxStep && stepLen > 0) {
-      const k = maxStep / stepLen;
-      stepX *= k;
-      stepY *= k;
-    }
-
-    this.sprite.x = clamp(
-      this.sprite.x + stepX,
-      this.halfWidth,
-      VIRTUAL_WIDTH - this.halfWidth,
+    // No position clamp is needed: easeToward always lands between the current
+    // position and the target, and the target is already bounds-clamped in
+    // steer(), so a ship starting in bounds can never leave them.
+    this.sprite.x = easeToward(
+      this.sprite.x,
+      this.targetX,
+      this.followResponse,
+      dt,
     );
-    this.sprite.y = clamp(
-      this.sprite.y + stepY,
-      this.halfHeight,
-      VIRTUAL_HEIGHT - this.halfHeight,
+    this.sprite.y = easeToward(
+      this.sprite.y,
+      this.targetY,
+      this.followResponse,
+      dt,
     );
 
     // Bank into the horizontal movement: lean left/right by speed, level at rest.
-    const vx = dt > 0 ? stepX / dt : 0;
+    const vx = dt > 0 ? (this.sprite.x - prevX) / dt : 0;
     this.sprite.texture =
       this.bankFrames[
         vx <= -600 ? 0 : vx <= -120 ? 1 : vx >= 600 ? 4 : vx >= 120 ? 3 : 2
@@ -295,8 +298,4 @@ export class Player {
     }
     if (this.invulnTimer <= 0) this.sprite.alpha = 1;
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return value < min ? min : value > max ? max : value;
 }
