@@ -17,6 +17,8 @@ import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
+import { getSensitivity } from "../game/settings";
+import { setRawInputGranted } from "../game/input";
 import { ProjectilePool, type Projectile } from "../game/ProjectilePool";
 import {
   EnemyPool,
@@ -206,6 +208,7 @@ export class GameScene implements Scene {
     this.view.addChild(this.enemyBullets.view);
 
     this.player = new Player(this.bullets, this.missiles);
+    this.player.sensitivity = getSensitivity();
     this.view.addChild(this.player.sprite);
 
     // Drones orbit the ship and beam over the enemies — above the player sprite.
@@ -264,8 +267,17 @@ export class GameScene implements Scene {
     }) => Promise<void> | void;
     const result = request.call(el, { unadjustedMovement: true });
     if (result && typeof (result as Promise<void>).catch === "function") {
-      (result as Promise<void>).catch(() => el.requestPointerLock());
+      (result as Promise<void>)
+        .then(() => setRawInputGranted(true))
+        .catch(() => {
+          // No raw-input support: retry plain, and record that OS mouse
+          // acceleration is now riding on top of every delta we receive.
+          setRawInputGranted(false);
+          el.requestPointerLock();
+        });
     }
+    // Older no-promise API: we cannot learn the answer, so leave it unrecorded
+    // and the settings UI simply says nothing.
   }
 
   /** Lock (re)acquired — back in active gameplay; clear stale input and any
@@ -274,6 +286,9 @@ export class GameScene implements Scene {
     this.pendingDx = 0;
     this.pendingDy = 0;
     this.firing = false;
+    // Re-read the setting on every resume: the Pause overlay may have changed it
+    // while the game was frozen, and resume is the first moment it can matter.
+    this.player.sensitivity = getSensitivity();
     if (this.paused) {
       this.pauseOverlay?.view.destroy({ children: true });
       this.pauseOverlay = undefined;
@@ -307,10 +322,12 @@ export class GameScene implements Scene {
     this.starfield.update(dt);
     this.waves.update(dt);
 
-    // Convert accumulated mouse deltas (CSS px) to virtual px via the letterbox
-    // scale, then steer; drain the accumulator for the next frame.
-    const scale = this.manager.scale || 1;
-    this.player.steer(this.pendingDx / scale, this.pendingDy / scale);
+    // Mouse deltas map to world distance, not screen distance (ADR-0023): the
+    // ship covers the same in-game distance per unit of hand motion whatever the
+    // window size, so muscle memory survives a resize or a jump to fullscreen.
+    // The Menu Cursor in onMouseMove keeps its /scale — that one IS a
+    // screen-space cursor, so screen-consistent motion is correct there.
+    this.player.steer(this.pendingDx, this.pendingDy);
     this.pendingDx = 0;
     this.pendingDy = 0;
     this.player.update(dt, this.firing);

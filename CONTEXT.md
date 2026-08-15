@@ -7,7 +7,7 @@ A browser-based, vertical-scrolling roguelike shoot-'em-up built with PixiJS. Ea
 ### Controls
 
 **Steering**:
-How the player moves the ship: by the mouse's *motion*, not its position. Moving the mouse nudges the ship a proportional distance and it eases to a stop when the hand stops — there is no on-screen point the ship "goes to." The mouse only ever moves the ship; the weapon always fires straight up. Improved by the Engine Upgrade.
+How the player moves the ship: by the mouse's *motion*, not its position. Moving the mouse nudges the ship a proportional distance and it eases to a stop when the hand stops — there is no on-screen point the ship "goes to." The mouse only ever moves the ship; the weapon always fires straight up. Improved by the Engine Upgrade. How far the ship travels per unit of hand motion is a player setting, adjustable from the Menu or the Pause overlay, because mouse DPI varies several-fold across hardware and no browser API exposes it.
 _Avoid_: aiming (there is no aim), cursor-follow, point-and-go.
 
 **Menu Cursor**:
@@ -45,7 +45,7 @@ A persistent improvement chosen during a Run. One of 14 types: stats (Damage, HP
 _Avoid_: powerup (reserve "powerup" for casual talk only), perk.
 
 **Engine**:
-The stat Upgrade that improves Steering: each level raises sensitivity (the ship travels farther per unit of hand motion — the player's sense of "ship speed") and makes the ship's chase of its target snappier.
+The stat Upgrade that improves Steering: each level multiplies sensitivity (the ship travels farther per unit of hand motion — the player's sense of "ship speed") and makes the ship's chase of its target snappier, which also raises its top speed. Multiplying rather than adding keeps the Upgrade equally powerful for every player whatever sensitivity they set.
 _Avoid_: Move Speed (the ship has no speed stat — the mouse sets the pace), thrusters.
 
 **Upgrade Prompt**:

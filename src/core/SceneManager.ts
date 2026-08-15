@@ -53,9 +53,10 @@ export class SceneManager {
     });
   }
 
-  /** Current letterbox scale (CSS px per virtual px). Used to normalize raw
-   *  mouse-movement deltas into virtual space so steering feels window-size
-   *  independent (see docs/adr/0006). */
+  /** Current letterbox scale (CSS px per virtual px). Steering deltas map
+   *  straight to world px now (ADR-0023) and no longer use this; the remaining
+   *  consumer is the Menu Cursor branch in GameScene.onMouseMove, a genuine
+   *  screen-space cursor that still needs to normalize for window size. */
   get scale(): number {
     return this.root.scale.x;
   }

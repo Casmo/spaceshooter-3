@@ -48,16 +48,32 @@ export const PLAYER = {
   startX: VIRTUAL_WIDTH / 2,
   startY: VIRTUAL_HEIGHT * 0.8,
   /** Mouse sensitivity: how far the steer-target moves per unit of mouse motion.
-   *  Deltas are normalized by the letterbox scale first, so this is window-size
-   *  independent; 1.0 means the ship tracks the hand 1:1 on screen. The Engine
-   *  upgrade raises it (see docs/adr/0006). */
-  sensitivity: 0.8,
+   *  Deltas map to world px (ADR-0023), so this is window-size independent.
+   *  This is the default; the player can change it in settings, and the Engine
+   *  upgrade multiplies whatever they chose. */
+  sensitivityDefault: 0.8,
+  /** Sensitivity slider bounds and step, as absolute sensitivity values.
+   *  0.2..2.4 in 0.2 steps is 25%..300% of the default in 25% steps — 12 stops,
+   *  comparable clicking effort to the volume rows. The range exists because
+   *  mouse DPI varies ~4x across common hardware and no web API exposes it. */
+  sensitivityMin: 0.2,
+  sensitivityMax: 2.4,
+  sensitivityStep: 0.2,
   /** Eased-follow smoothing toward the steer-target, per second (higher =
-   *  snappier). The Engine upgrade raises it. */
-  followResponse: 12,
-  /** Teleport-guard: caps a single frame's step so a violent mouse flick can't
-   *  warp the ship across the field. Fixed — not raised by the Engine upgrade. */
-  maxSpeed: 1600,
+   *  snappier). The Engine upgrade raises it. Together with maxLead this sets
+   *  the ship's top speed, but `followResponse * maxLead` is only the dt->0
+   *  asymptote — see maxLead's comment for the speed actually achieved
+   *  (ADR-0023). */
+  followResponse: 20,
+  /** How far the steer-target may lead the ship (virtual px) — this is what
+   *  bounds trailing lag. It also caps top speed, but NOT at followResponse *
+   *  maxLead: each frame re-clamps the lead to this value and then only eases
+   *  `1 - e^(-followResponse*dt)` of it, so the achieved ceiling is
+   *  `maxLead * (1 - e^(-followResponse*dt)) / dt` — frame-rate dependent, ≈1500
+   *  px/s at 60Hz. 88 is tuned to hit that 60Hz figure. This replaces the old
+   *  maxSpeed teleport-guard, which capped the step instead and so switched the
+   *  ship between two different motion laws mid-flick (ADR-0023). */
+  maxLead: 88,
   /** Starting max HP for a fresh run. HP upgrade raises this later. */
   maxHp: 100,
   /** Starting lives for a fresh run. */
@@ -804,7 +820,11 @@ export const UPGRADES = {
     cap: 10,
     weight: 12,
     rarity: "common",
-    sensitivityAmount: 0.1,
+    /** Sensitivity is multiplied, not added, so the upgrade's relative power is
+     *  the same for every player whatever sensitivity they set (ADR-0023).
+     *  1 + 10 * 0.125 = x2.25 at cap — exactly the maxed ratio from back when
+     *  sensitivity was a fixed 0.8 constant. */
+    sensitivityFactor: 0.125,
     responseAmount: 1,
   },
   fireRate: { cap: 0, weight: 12, rarity: "common", mult: 0.95 },

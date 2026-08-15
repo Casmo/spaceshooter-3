@@ -156,7 +156,7 @@ function installUnlockListener(): void {
   window.addEventListener("keydown", unlock);
 }
 
-// --- Volume controls (used by the AudioControls UI). Setters persist via
+// --- Volume controls (used by the SettingsControls UI). Setters persist via
 //     settings and apply live to music; SFX is read fresh on each playSound. ---
 
 export function getMusicVolume(): number {

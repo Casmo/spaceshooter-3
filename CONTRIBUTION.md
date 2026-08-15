@@ -39,7 +39,7 @@ The "Draw chance" below is each card's share of the full pool (total weight = 81
 | Powerup | Tier | Weight | Draw chance | Cap | Effect |
 |---------|------|-------:|------------:|----:|--------|
 | Shooting Power | common | 12 | 14.8% | ∞ | +6 bullet damage |
-| Engine | common | 12 | 14.8% | 10 | Faster, more responsive movement |
+| Engine | common | 12 | 14.8% | 10 | Faster, more responsive movement — x2.25 sensitivity and +10 follow response at cap, raising top speed ~1500 → ~2080px/s at 60Hz (frame-rate dependent, see ADR-0023) |
 | Rapid Fire | common | 12 | 14.8% | ∞ | ×0.95 shot cooldown |
 | Tractor Beam | common | 12 | 14.8% | 5 | +120 Star pickup range |
 | Piercing | uncommon | 8 | 9.9% | 5 | Bullets pass through +1 enemy |

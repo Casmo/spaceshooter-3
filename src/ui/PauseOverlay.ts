@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { VIRTUAL_WIDTH, VIRTUAL_HEIGHT, FONT_FAMILY } from "../config";
 import { makeButton } from "./Button";
-import { AudioControls } from "./AudioControls";
+import { SettingsControls } from "./SettingsControls";
 
 /** Callbacks for the three pause-menu actions. */
 export interface PauseActions {
@@ -10,8 +10,9 @@ export interface PauseActions {
   onQuit: () => void;
 }
 
-/** The pause overlay: a dimmed backdrop, title, Resume/Restart/Quit, and inline
- *  audio volume controls (adjustable mid-run, ADR-0014). */
+/** The pause overlay: a dimmed backdrop, title, Resume/Restart/Quit, and an
+ *  inline settings block (Music, SFX, Sensitivity — all adjustable mid-run,
+ *  ADR-0014). */
 export class PauseOverlay {
   readonly view = new Container();
 
@@ -46,16 +47,16 @@ export class PauseOverlay {
       this.view.addChild(btn);
     });
 
-    const audio = new AudioControls();
-    audio.view.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 230);
-    this.view.addChild(audio.view);
+    const settings = new SettingsControls();
+    settings.view.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 220);
+    this.view.addChild(settings.view);
 
     const hint = new Text({
       text: "Click Resume to recapture the mouse",
       style: { fill: 0x9aa0a6, fontSize: 26, fontFamily: FONT_FAMILY },
     });
     hint.anchor.set(0.5);
-    hint.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 380);
+    hint.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2 + 470);
     this.view.addChild(hint);
   }
 }
