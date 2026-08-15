@@ -18,6 +18,7 @@ import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
 import { getSensitivity } from "../game/settings";
+import { setRawInputGranted } from "../game/input";
 import { ProjectilePool, type Projectile } from "../game/ProjectilePool";
 import {
   EnemyPool,
@@ -266,8 +267,17 @@ export class GameScene implements Scene {
     }) => Promise<void> | void;
     const result = request.call(el, { unadjustedMovement: true });
     if (result && typeof (result as Promise<void>).catch === "function") {
-      (result as Promise<void>).catch(() => el.requestPointerLock());
+      (result as Promise<void>)
+        .then(() => setRawInputGranted(true))
+        .catch(() => {
+          // No raw-input support: retry plain, and record that OS mouse
+          // acceleration is now riding on top of every delta we receive.
+          setRawInputGranted(false);
+          el.requestPointerLock();
+        });
     }
+    // Older no-promise API: we cannot learn the answer, so leave it unrecorded
+    // and the settings UI simply says nothing.
   }
 
   /** Lock (re)acquired — back in active gameplay; clear stale input and any

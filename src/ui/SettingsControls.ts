@@ -1,5 +1,5 @@
-import { Container } from "pixi.js";
-import { AUDIO, PLAYER } from "../config";
+import { Container, Text } from "pixi.js";
+import { AUDIO, FONT_FAMILY, PLAYER } from "../config";
 import { makeStepperRow } from "./StepperRow";
 import {
   getMusicVolume,
@@ -8,6 +8,7 @@ import {
   setSfxVolume,
 } from "../game/audio";
 import { getSensitivity, setSensitivity } from "../game/settings";
+import { getRawInputGranted } from "../game/input";
 
 const ROW_GAP = 76;
 
@@ -17,7 +18,9 @@ const ROW_GAP = 76;
  * through game/settings and is picked up by GameScene on the next resume.
  *
  * Position `view` by the top row's center; rows lay out downward from the
- * container origin, so the block spans roughly [0 .. 2 * ROW_GAP] in Y.
+ * container origin, so the block spans roughly [0 .. 2 * ROW_GAP] in Y. Once
+ * the raw-input status is known (see game/input), the block gains a fourth
+ * line below the Sensitivity row disclosing it.
  */
 export class SettingsControls {
   readonly view = new Container();
@@ -61,6 +64,20 @@ export class SettingsControls {
       }),
       ROW_GAP * 2,
     );
+
+    // Only shown once we know — in the Menu before the first Play, we don't.
+    const raw = getRawInputGranted();
+    if (raw !== undefined) {
+      const note = new Text({
+        text: raw
+          ? "Raw input: on"
+          : "Raw input: off (OS mouse acceleration active)",
+        style: { fill: 0x9aa0a6, fontSize: 22, fontFamily: FONT_FAMILY },
+      });
+      note.anchor.set(0.5);
+      note.position.set(0, ROW_GAP * 2 + 42);
+      this.view.addChild(note);
+    }
   }
 
   private addRow(row: Container, y: number): void {
