@@ -307,10 +307,12 @@ export class GameScene implements Scene {
     this.starfield.update(dt);
     this.waves.update(dt);
 
-    // Convert accumulated mouse deltas (CSS px) to virtual px via the letterbox
-    // scale, then steer; drain the accumulator for the next frame.
-    const scale = this.manager.scale || 1;
-    this.player.steer(this.pendingDx / scale, this.pendingDy / scale);
+    // Mouse deltas map to world distance, not screen distance (ADR-0023): the
+    // ship covers the same in-game distance per unit of hand motion whatever the
+    // window size, so muscle memory survives a resize or a jump to fullscreen.
+    // The Menu Cursor in onMouseMove keeps its /scale — that one IS a
+    // screen-space cursor, so screen-consistent motion is correct there.
+    this.player.steer(this.pendingDx, this.pendingDy);
     this.pendingDx = 0;
     this.pendingDy = 0;
     this.player.update(dt, this.firing);
