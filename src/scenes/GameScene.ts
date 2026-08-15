@@ -17,6 +17,7 @@ import { type Scene, SceneManager } from "../core/SceneManager";
 import { getTexture } from "../assets";
 import { Starfield } from "../game/Starfield";
 import { Player } from "../game/Player";
+import { getSensitivity } from "../game/settings";
 import { ProjectilePool, type Projectile } from "../game/ProjectilePool";
 import {
   EnemyPool,
@@ -206,6 +207,7 @@ export class GameScene implements Scene {
     this.view.addChild(this.enemyBullets.view);
 
     this.player = new Player(this.bullets, this.missiles);
+    this.player.sensitivity = getSensitivity();
     this.view.addChild(this.player.sprite);
 
     // Drones orbit the ship and beam over the enemies — above the player sprite.
@@ -274,6 +276,9 @@ export class GameScene implements Scene {
     this.pendingDx = 0;
     this.pendingDy = 0;
     this.firing = false;
+    // Re-read the setting on every resume: the Pause overlay may have changed it
+    // while the game was frozen, and resume is the first moment it can matter.
+    this.player.sensitivity = getSensitivity();
     if (this.paused) {
       this.pauseOverlay?.view.destroy({ children: true });
       this.pauseOverlay = undefined;

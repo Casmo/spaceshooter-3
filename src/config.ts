@@ -816,7 +816,11 @@ export const UPGRADES = {
     cap: 10,
     weight: 12,
     rarity: "common",
-    sensitivityAmount: 0.1,
+    /** Sensitivity is multiplied, not added, so the upgrade's relative power is
+     *  the same for every player whatever sensitivity they set (ADR-0023).
+     *  1 + 10 * 0.125 = x2.25 at cap — exactly the maxed ratio from back when
+     *  sensitivity was a fixed 0.8 constant. */
+    sensitivityFactor: 0.125,
     responseAmount: 1,
   },
   fireRate: { cap: 0, weight: 12, rarity: "common", mult: 0.95 },

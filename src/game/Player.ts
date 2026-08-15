@@ -38,6 +38,10 @@ export class Player {
   /** Steer-target travel per unit of mouse motion. The scene syncs this from the
    *  player's persisted setting; the Engine upgrade multiplies it separately. */
   sensitivity: number = PLAYER.sensitivityDefault;
+  /** Engine's sensitivity multiplier (1 = no Engine upgrades). Kept separate
+   *  from `sensitivity` so the player's setting and the upgrade compose without
+   *  either overwriting the other (ADR-0023). */
+  sensitivityMult = 1;
   followResponse: number = PLAYER.followResponse;
   pickupRange: number = PLAYER.basePickupRange;
   /** How far the steer-target may lead the ship (ADR-0023). */
@@ -133,7 +137,7 @@ export class Player {
       this.sprite.y,
       dx,
       dy,
-      this.sensitivity,
+      this.sensitivity * this.sensitivityMult,
       this.maxLead,
       this.bounds,
     );
