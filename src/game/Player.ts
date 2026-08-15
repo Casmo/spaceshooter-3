@@ -37,7 +37,7 @@ export class Player {
   cooldown: number = WEAPON.cooldown;
   /** Steer-target travel per unit of mouse motion. The scene syncs this from the
    *  player's persisted setting; the Engine upgrade multiplies it separately. */
-  sensitivity: number = PLAYER.sensitivity;
+  sensitivity: number = PLAYER.sensitivityDefault;
   followResponse: number = PLAYER.followResponse;
   pickupRange: number = PLAYER.basePickupRange;
   /** How far the steer-target may lead the ship (ADR-0023). */

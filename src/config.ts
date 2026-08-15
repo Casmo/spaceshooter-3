@@ -48,10 +48,17 @@ export const PLAYER = {
   startX: VIRTUAL_WIDTH / 2,
   startY: VIRTUAL_HEIGHT * 0.8,
   /** Mouse sensitivity: how far the steer-target moves per unit of mouse motion.
-   *  Deltas are normalized by the letterbox scale first, so this is window-size
-   *  independent; 1.0 means the ship tracks the hand 1:1 on screen. The Engine
-   *  upgrade raises it (see docs/adr/0006). */
-  sensitivity: 0.8,
+   *  Deltas map to world px (ADR-0023), so this is window-size independent.
+   *  This is the default; the player can change it in settings, and the Engine
+   *  upgrade multiplies whatever they chose. */
+  sensitivityDefault: 0.8,
+  /** Sensitivity slider bounds and step, as absolute sensitivity values.
+   *  0.2..2.4 in 0.2 steps is 25%..300% of the default in 25% steps — 12 stops,
+   *  comparable clicking effort to the volume rows. The range exists because
+   *  mouse DPI varies ~4x across common hardware and no web API exposes it. */
+  sensitivityMin: 0.2,
+  sensitivityMax: 2.4,
+  sensitivityStep: 0.2,
   /** Eased-follow smoothing toward the steer-target, per second (higher =
    *  snappier). The Engine upgrade raises it. Together with maxLead this sets
    *  the ship's top speed: followResponse * maxLead (ADR-0023). */
