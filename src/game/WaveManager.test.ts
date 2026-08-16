@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { WaveManager } from "./WaveManager";
 import type { EnemyPool } from "./EnemyPool";
-import { LODE, WAVES, lodeBurstCount } from "../config";
+import { DUELIST, LODE, WAVES, lodeBurstCount } from "../config";
 
 /**
  * Wave-composition tests, driven through WaveManager's public entry point
@@ -34,6 +34,9 @@ function runWaves(upTo: number): Spawn[] {
   const record = (kind: string) => (): void => {
     spawns.push({ wave: manager!.currentWave, kind });
   };
+  // Duelists never leave the field and nothing kills them here, so simply never
+  // dropping one models the worst case the cap exists to bound.
+  let liveDuelists = 0;
   const pool = {
     liveCount: 0,
     spawnSwarmer: record("swarmer"),
@@ -46,6 +49,12 @@ function runWaves(upTo: number): Spawn[] {
     spawnMine: record("mine"),
     spawnBomber: record("bomber"),
     spawnLode: record("lode"),
+    spawnDuelist: (): void => {
+      liveDuelists++;
+      record("duelist")();
+    },
+    countLive: (kind: string): number =>
+      kind === "duelist" ? liveDuelists : 0,
   };
   manager = new WaveManager(pool as unknown as EnemyPool);
 
@@ -131,6 +140,38 @@ describe("Lode wave scheduling", () => {
     // non-Lode wave that follows it draws for its own number.
     expect(adds(15)).toBe(budgetFor(15));
     expect(adds(16)).toBe(budgetFor(16));
+  });
+});
+
+describe("Duelist wave scheduling", () => {
+  it("spawns no Duelist in any wave before the start wave", () => {
+    const spawns = runWaves(DUELIST.startWave - 1);
+    expect(spawns.filter((s) => s.kind === "duelist")).toEqual([]);
+  });
+
+  it("spawns Duelists once the start wave is reached", () => {
+    // ~10% of a 74-enemy budget rolls ~7 tokens per wave from 35 on, so seeing
+    // none across six waves would take a ~1-in-a-billion run of luck.
+    const spawns = runWaves(DUELIST.startWave + 5);
+    const waves = spawns.filter((s) => s.kind === "duelist").map((s) => s.wave);
+    expect(waves.length).toBeGreaterThan(0);
+    expect(Math.min(...waves)).toBeGreaterThanOrEqual(DUELIST.startWave);
+  });
+
+  it("never lets more than maxLive Duelists onto the field", () => {
+    // The stall guard. Nothing dies in this run, so every Duelist ever spawned
+    // is still live — the total IS the concurrent count. The spawn chance rolls
+    // far more tokens than the cap, so this only passes if spawnNext enforces it.
+    const spawns = runWaves(DUELIST.startWave + 5);
+    const total = spawns.filter((s) => s.kind === "duelist").length;
+    expect(total).toBeLessThanOrEqual(DUELIST.maxLive);
+  });
+
+  it("pays an over-cap slot out as another enemy rather than dropping it", () => {
+    // A capped slot must not silently shrink the wave: wave 35 is relentless
+    // (a mini-boss on top) and not a Lode wave, so it owes exactly budget + 1.
+    const spawns = runWaves(35);
+    expect(waveSpawns(spawns, 35).length).toBe(budgetFor(35) + 1);
   });
 });
 

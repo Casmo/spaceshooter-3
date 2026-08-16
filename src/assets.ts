@@ -26,6 +26,9 @@ const MANIFEST = {
   // in gold instead of red — deliberate, see the ADR.
   lode: "./assets/SpaceShooter/Enemies/Asteroids_Lode.png",
   warden: "./assets/SpaceShooter/Enemies/CrabShip.png",
+  // Duelist: the standoff enemy that holds the top from wave 35 (ADR-0024). Its
+  // art points down, and it is the first enemy drawn ROTATED to face the player.
+  duelist: "./assets/SpaceShooter/Enemies/fighter3.png",
   // SpaceStation: the slow side-raking fortress (144x144), wave 20+ (ADR-0015).
   station: "./assets/SpaceShooter/Enemies/SpaceStation.png",
   // Bomber: a 5-frame animation sheet (16x16 each). The first animated enemy —
@@ -75,6 +78,7 @@ export type AssetAlias =
   | "warden"
   | "bomber"
   | "station"
+  | "duelist"
   | "shieldNode"
   | "asteroidLarge"
   | "asteroidMedium"
@@ -153,6 +157,7 @@ export async function loadAssets(): Promise<void> {
   textures.set("lode", Assets.get("lode"));
   textures.set("warden", Assets.get("warden"));
   textures.set("station", Assets.get("station"));
+  textures.set("duelist", Assets.get("duelist"));
   // Shield Node: one irregular chunk cut from the Debris atlas (31x31 at 210,19).
   textures.set(
     "shieldNode",

@@ -4,6 +4,7 @@ import {
   WARDEN,
   BOMBER,
   SPACESTATION,
+  DUELIST,
   LODE,
   isLodeWave,
 } from "../config";
@@ -23,6 +24,10 @@ type SpawnKind =
   | "warden"
   | "bomber"
   | "station"
+  // The Duelist: the wave-35 standoff enemy. It NEVER leaves, so unlike every
+  // other budget pick its live count has to be capped at spawn time — see
+  // spawnNext (ADR-0024).
+  | "duelist"
   // The Lode: a drive-by treasure, spliced on top of the budget every few waves
   // from LODE.startWave. Not a capstone — it flees, and the wave clears without
   // it (ADR-0021).
@@ -160,11 +165,17 @@ export class WaveManager {
   }
 
   /** Weighted enemy pick; gunners enter wave 2+, asteroids wave 3+, mines wave 6+,
-   *  wardens and bombers wave 15+, stations wave 20+. Mines, then wardens, bombers,
-   *  and stations each take a flat share off the top; the rest keep the original
-   *  25/25/50 split (drawn from a second roll) so pre-mine waves are unchanged. */
+   *  wardens and bombers wave 15+, stations wave 20+, duelists wave 35+. Mines,
+   *  then wardens, bombers, stations, and duelists each take a flat share off the
+   *  top; the rest keep the original 25/25/50 split (drawn from a second roll) so
+   *  pre-mine waves are unchanged.
+   *
+   *  This runs at wave composition, so it cannot see what is live — the
+   *  Duelist's cap is applied later, in spawnNext. */
   private pickKind(n: number): SpawnKind {
     if (n >= MINE.startWave && Math.random() < MINE.spawnChance) return "mine";
+    if (n >= DUELIST.startWave && Math.random() < DUELIST.spawnChance)
+      return "duelist";
     if (n >= WARDEN.startWave && Math.random() < WARDEN.spawnChance)
       return "warden";
     if (n >= BOMBER.startWave && Math.random() < BOMBER.spawnChance)
@@ -211,6 +222,19 @@ export class WaveManager {
         break;
       case "station":
         this.enemies.spawnStation(this.mods, this.waveNumber);
+        break;
+      case "duelist":
+        // The Duelist is the one budget pick that never leaves the field, so a
+        // spawn chance cannot bound how many accumulate — and a wave cannot
+        // clear until every one of them is dead. The cap has to be applied
+        // HERE rather than at composition, because that runs up front when
+        // nothing is live yet. Over the cap, the slot pays out a Gunner: the
+        // wave keeps its full enemy budget, it just isn't another Duelist.
+        if (this.enemies.countLive("duelist") >= DUELIST.maxLive) {
+          this.enemies.spawnGunner(this.mods, this.waveNumber);
+        } else {
+          this.enemies.spawnDuelist(this.mods);
+        }
         break;
       case "lode":
         this.enemies.spawnLode(this.mods);

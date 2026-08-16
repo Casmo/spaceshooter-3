@@ -124,7 +124,7 @@ Mine and the Bomber.
 | `standoffRadius` | 620 | From the player's home row (y ≈ 864) this puts it at y ≈ 250 — inside the top band |
 | `bandMinY` / `bandMaxY` | 150 / 380 | The top strip it is confined to |
 | `xMargin` | 140 | Keeps the anchor off the side edges |
-| `turnRate` | 4.0 rad/s | ~230°/s. Tracks a drift easily; a committed break outruns it |
+| `turnRate` | 1.8 rad/s | ~103°/s. Tracks a drift; outrun above ~1100 px/s, about 75% of top speed. **Corrected during implementation** — the 4.0 rad/s first proposed here is above the ~2.4 rad/s a player at top speed can ever demand at this range, so the burst would have been un-outrunnable. See ADR-0024 |
 | `arcStepMinDeg` / `arcStepMaxDeg` | 25 / 55 | Per-move angular step |
 | `followResponse` / `maxSpeed` | 3.2 /s, 520 px/s | Eased chase of the anchor, so it lags and swings rather than snapping |
 | `cycleSeconds` | 3 | The full loop |

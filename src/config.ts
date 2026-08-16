@@ -527,6 +527,117 @@ export const SPACESTATION = {
   muzzleOffset: 90,
 } as const;
 
+/** Duelist (fighter3): a standoff enemy that owns the TOP of the field from wave
+ *  35. It never descends into the player's zone and never flees — a wave clears
+ *  only when it is dead. It holds `standoffRadius` from the player, keeps its
+ *  nose pointed at them, and runs a fixed `cycleSeconds` loop: telegraph, a
+ *  3-shot burst fired ALONG THE NOSE, a slide along an arc around the player,
+ *  then a stationary settle (the player's window to line up and shoot back).
+ *
+ *  Two things make it new: it is the first enemy drawn rotated to face the
+ *  player, and the first whose destinations are CHOSEN relative to the player.
+ *  Each spot is picked from where the player is at that instant and then
+ *  COMMITTED — the Duelist flies to the spot it chose, not to where the player
+ *  has since gone. So it reads as an opponent taking up a position, and the
+ *  player can pull it out of place by moving after it commits.
+ *
+ *  The standoff is protection from ramming, not from the gun: it may sit
+ *  directly above the player, and lining up under it is how you kill it.
+ *  See ADR-0024. */
+export const DUELIST = {
+  /** 32x32 native at 2x = 64px — the Swarmer's footprint. It is a light,
+   *  quick skirmisher, and its size should promise that rather than bulk. */
+  scale: 2,
+  /** x the wave hpMult and NOTHING else — no per-appearance stacking. A
+   *  never-fleeing enemy that outgrows the player's DPS is a soft-lock risk
+   *  (ADR-0016's reasoning). ~765 effective at wave 35: between the Warden
+   *  (~470) and the SpaceStation (~1058). The first knob to tune. */
+  hp: 130,
+  /** Parity only — the standoff means the player will almost never touch it. */
+  contactDamage: 30,
+  bulletDamage: 14,
+  /** First wave Duelists appear in the spawn budget. */
+  startWave: 35,
+  /** Per-pick share of the budget from startWave on (a flat share off the top,
+   *  like the Bomber). maxLive does the real limiting — see below. */
+  spawnChance: 0.1,
+  /** Hard cap on simultaneously-live Duelists. Because a Duelist NEVER leaves,
+   *  a spawn chance alone cannot bound the field: at wave 35 a 10% share of a
+   *  74-enemy budget is ~7 of them, none of which ever go away. Enforced at
+   *  spawn time (the wave queue is composed up front, before anything is live).
+   *  Two is deliberate: they start on opposite sides of the player's arc, so
+   *  the player takes crossfire from two angles and can only line up under one
+   *  at a time. */
+  maxLive: 2,
+  /** AVERAGE travel speed toward the spot it has committed to, entry included —
+   *  there is no separate descent. The move is interpolated with an ease in and
+   *  out rather than run at a flat rate, so it pulls away from the spot it is
+   *  leaving and settles into the one it is taking; peak speed is 1.5x this.
+   *  Fast enough that the move reads as a decisive repositioning rather than a
+   *  drift, and short enough that most of the loop is spent parked and
+   *  shootable. */
+  moveSpeed: 900,
+  /** Floor on a move's duration. Two consecutive spots can resolve close
+   *  together (the band clamp collapses distant arcs onto similar points when
+   *  the player is high), and without this such a move would finish in a frame
+   *  or two — a teleport with no ease to read. */
+  travelMinSeconds: 0.35,
+  /** How long it holds a spot once it arrives: it fires the burst on arrival,
+   *  then waits out the rest before choosing the next spot. This is the player's
+   *  window to line up under it, so it is the main difficulty knob after hp. */
+  dwellSeconds: 1.6,
+  /** How far from the player each new spot is chosen. From the player's home row
+   *  (y~864) this puts it around y~554, and the band clamp below pushes the
+   *  wider arcs down to y~620 — so it sets up 310-390px away, close enough to
+   *  loom and to be lined up under quickly.
+   *
+   *  Halving this alone would NOT halve the gap: the band is what binds at the
+   *  player's home row, so the two move together. Raise both to push it back
+   *  toward the top of the field. */
+  standoffRadius: 310,
+  /** The strip every chosen spot is confined to. bandMaxY is the real distance
+   *  knob (it sets how close it can sit when the player is on the home row);
+   *  bandMinY only binds when the player climbs, capping how high it chases. */
+  bandMinY: 350,
+  bandMaxY: 620,
+  /** Keeps chosen spots clear of the side edges. */
+  xMargin: 140,
+  /** Nose turn rate (rad/s, ~150deg/s). Shots fire along the nose, so this is
+   *  the single knob that decides whether the burst is dodgeable, and it has to
+   *  be read against the geometry rather than picked by feel. It sits inside a
+   *  window with a wall on each side, both set by standoffRadius:
+   *
+   *   - Too high (above ~3.2 here) and a break cannot be outrun. At close range
+   *     a player running sideways opens the distance fast — over one burst the
+   *     range grows 310 -> ~550px — so the angle the nose must cover collapses
+   *     mid-volley and it catches back up before the last shot. The nose must be
+   *     slow enough to still be behind at the END of the burst, not just during.
+   *   - Too low (below ~1.3) and a gentle drift outruns it too, which makes the
+   *     burst a pure movement check and deletes the punish for standing still.
+   *
+   *  At 2.6 a drift is tracked and punished and a committed break (above roughly
+   *  800-1000px/s, against the ship's ~1500px/s top speed — ADR-0023) leaves the
+   *  later shots trailing. BOTH walls move with standoffRadius, and they close
+   *  in as the Duelist gets nearer, so re-derive this whenever that changes. */
+  turnRate: 2.6,
+  /** How far around the player each new spot steps from the last (degrees). The
+   *  direction is held between moves and reflects off the arc limits, so it
+   *  paces back and forth across the player's arc rather than circling one way
+   *  forever. */
+  arcStepMinDeg: 25,
+  arcStepMaxDeg: 55,
+  /** How far either side of straight-above the arc reaches (degrees). Bounding
+   *  the ANGLE rather than the resulting point is what keeps chosen spots in the
+   *  player's upper half: at the limit the spot is far out to the side, and the
+   *  band clamp then pulls it back down into the top strip. */
+  arcHalfRangeDeg: 75,
+  /** The tracking volley, fired on arrival: each shot leaves along the CURRENT
+   *  nose, so the volley bends toward the player mid-burst. */
+  burstCount: 3,
+  burstInterval: 0.15,
+  radiusFactor: 0.7,
+} as const;
+
 /** Lode (Asteroids_Lode): a heavy golden rock that drives across the TOP of the
  *  field once every `everyWaves` waves from `startWave`, leaking Stars as it
  *  passes and bursting into a shower of them if it is killed before it leaves.
@@ -696,6 +807,9 @@ export const XP = {
   warden: 14,
   bomber: 6,
   station: 16,
+  /** Between the Warden (14) and the SpaceStation (16) — it is tankier than a
+   *  Warden and, unlike one, it can never be waited out. */
+  duelist: 18,
   /** Boss parity — a Lode carries Boss HP and must die inside its traverse
    *  window (ADR-0021). */
   lode: 60,
@@ -725,6 +839,8 @@ export const SCORE = {
   warden: 100,
   bomber: 35,
   station: 130,
+  /** Between the Warden (100) and the SpaceStation (130), matching its XP. */
+  duelist: 140,
   /** Boss parity, matching the Lode's XP. */
   lode: 600,
   /** Wave-clear bonus = waveClearBase * wave number. */

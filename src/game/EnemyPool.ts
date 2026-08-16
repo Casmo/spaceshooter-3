@@ -13,6 +13,7 @@ import {
   BOMBER,
   SPACESTATION,
   LODE,
+  DUELIST,
   ENEMY_BULLET,
   WAVES,
   XP,
@@ -20,6 +21,15 @@ import {
   type AsteroidSize,
 } from "../config";
 import { getTexture, getFrames, type AssetAlias } from "../assets";
+import {
+  anchorFor,
+  degToRad,
+  easeInOut,
+  stepArc,
+  travelSeconds,
+  turnToward,
+  type ArcBounds,
+} from "./duelist";
 
 export type EnemyKind =
   | "swarmer"
@@ -31,11 +41,23 @@ export type EnemyKind =
   | "warden"
   | "bomber"
   | "station"
+  | "duelist"
   | "lode";
 
 /** Hard cap on Shield Nodes per enemy (WARDEN.nodeCount must not exceed it). The
  *  sprites are pre-allocated per pooled enemy, so this stays small. */
 const SHIELD_NODE_CAPACITY = 6;
+
+/** The box every Duelist spot is confined to: the top band, inset from both
+ *  side edges (ADR-0024). */
+const DUELIST_BOUNDS: ArcBounds = {
+  minX: DUELIST.xMargin,
+  maxX: VIRTUAL_WIDTH - DUELIST.xMargin,
+  minY: DUELIST.bandMinY,
+  maxY: DUELIST.bandMaxY,
+};
+/** How far either side of straight-above the Duelist's arc reaches, in radians. */
+const DUELIST_ARC_HALF_RANGE = degToRad(DUELIST.arcHalfRangeDeg);
 
 /**
  * One destructible circle in a Warden's Shield (ADR-0012). It orbits the body at
@@ -251,6 +273,31 @@ export class Enemy {
   private stationFireTimer = 0;
   private stationPerSide = 0;
 
+  // Duelist (ADR-0024). It flies to a COMMITTED spot rather than tracking the
+  // player: duelTargetX/Y is that spot, frozen when chosen, and duelHasTarget
+  // guards the first choice (which needs a player position, so it waits for the
+  // first update). `duelArc` is the angle around the player the last spot was
+  // picked at, stepped in `duelDir` each time; `duelSide` seeds it so a pair
+  // starts on opposite sides. `duelFacing` is the nose heading — shots leave
+  // along it, so it is the player's honest read on where the next bullet goes.
+  // `duelDwell` counts out the parked beat after arrival. It shares
+  // shotsRemaining/fireTimer (the burst) with the Boss's own use of them.
+  private duelArc = 0;
+  private duelDir: 1 | -1 = 1;
+  private duelFacing = Math.PI / 2;
+  private duelSide: 1 | -1 = 1;
+  private duelTargetX = 0;
+  private duelTargetY = 0;
+  private duelHasTarget = false;
+  private duelDwell = 0;
+  // The move in progress: where it left from, how long the trip takes, and how
+  // far through it is. Interpolating from a recorded origin (rather than
+  // stepping toward the target) is what lets the ease be exact at both ends.
+  private duelFromX = 0;
+  private duelFromY = 0;
+  private duelTravel = 1;
+  private duelTravelT = 0;
+
   // Mini-boss strafing.
   private settled = false;
   private targetY = 0;
@@ -289,6 +336,11 @@ export class Enemy {
   }
   get y(): number {
     return this.sprite.y;
+  }
+  /** Which side of the player's arc a Duelist is pinned to. The pool reads it
+   *  to place a second Duelist on the opposite side (ADR-0024). */
+  get duelistSide(): 1 | -1 {
+    return this.duelSide;
   }
 
   /** Reset all behavior flags to a clean baseline before configuring a kind. */
@@ -332,6 +384,12 @@ export class Enemy {
     this.stationPerSide = 0;
     this.shieldCount = 0;
     for (const node of this.nodes) node.destroy();
+    this.duelHasTarget = false;
+    this.duelDwell = 0;
+    this.duelTravelT = 0;
+    this.duelTravel = 1;
+    this.duelArc = 0;
+    this.duelFacing = Math.PI / 2;
     this.settled = false;
     this.dashing = false;
     this.dashTime = 0;
@@ -611,6 +669,42 @@ export class Enemy {
   }
 
   /**
+   * Spawn a Duelist: the standoff enemy that owns the top of the field from
+   * wave 35 (ADR-0024). It enters from above the top edge at `x` and flies
+   * straight to the first spot it chooses, then repeats arrive-shoot-dwell-move
+   * for the rest of its life. It never descends into the player's zone and never
+   * flees — the only exit is being destroyed.
+   *
+   * `side` seeds which side of the player its first spot is chosen on, so a pair
+   * opens on opposite sides and the player is caught in a crossfire.
+   *
+   * Speeds deliberately ignore the wave `speedMult` (the Mine/Bomber/Lode
+   * precedent): the arrive-shoot-move rhythm is the thing the player learns to
+   * read, and it must beat identically at wave 35 and wave 60. HP takes the wave
+   * hpMult and no per-appearance multiplier — a never-fleeing enemy that outgrows
+   * the player's DPS is a soft-lock (ADR-0016's reasoning).
+   */
+  spawnDuelist(x: number, mods: WaveMods, side: 1 | -1): void {
+    this.reset("duelist", DUELIST.scale);
+    this.kind = "duelist";
+    this.mods = mods;
+    this.xpValue = XP.duelist;
+    this.scoreValue = SCORE.duelist;
+    this.hp = DUELIST.hp * mods.hpMult;
+    this.maxHp = this.hp;
+    this.contactDamage = DUELIST.contactDamage;
+    this.speed = DUELIST.moveSpeed;
+    this.bulletDamage = DUELIST.bulletDamage;
+    this.duelSide = side;
+    this.duelDir = Math.random() < 0.5 ? -1 : 1;
+    // Open partway out on its assigned side, so a pair splits the player's arc
+    // immediately instead of both opening from straight above.
+    this.duelArc = side * DUELIST_ARC_HALF_RANGE * 0.6;
+    this.radius = (this.sprite.width / 2) * DUELIST.radiusFactor;
+    this.sprite.position.set(x, -this.sprite.height / 2);
+  }
+
+  /**
    * Spawn a Lode: a heavy golden rock that drives across the TOP of the field
    * in a straight horizontal lane and exits the far side ~traverseSeconds later
    * (ADR-0021). It enters from the left or right at 50/50 and its lane Y is
@@ -713,6 +807,9 @@ export class Enemy {
         break;
       case "bomber":
         this.updateBomber(dt, ctx);
+        break;
+      case "duelist":
+        this.updateDuelist(dt, ctx);
         break;
       case "lode":
         this.updateLode(dt, ctx);
@@ -911,6 +1008,136 @@ export class Enemy {
     const hh = this.sprite.height / 2;
     this.sprite.x = Math.min(VIRTUAL_WIDTH - hw, Math.max(hw, this.sprite.x));
     this.sprite.y = Math.min(VIRTUAL_HEIGHT - hh, Math.max(hh, this.sprite.y));
+  }
+
+  /**
+   * Duelist: take up a position near the top band, shoot from it, hold it a
+   * moment, then take up a new one (ADR-0024).
+   *
+   * The loop is driven by ARRIVAL, not by a clock: it flies at a constant speed
+   * to the spot it chose, fires its burst the instant it gets there, dwells, and
+   * only then picks the next spot. Each spot is chosen from where the player is
+   * at that instant and then COMMITTED — it does not re-aim its destination as
+   * the player moves. That is what makes it read as an opponent taking up a
+   * position rather than something tethered to the ship, and it is what lets a
+   * player pull it out of place by moving after it has committed.
+   *
+   * The nose is the exception: it tracks the player at every moment, travelling
+   * included. Shots leave along it, so the player always has an honest read on
+   * where the next bullet goes.
+   *
+   * Firing runs here rather than through the shared `canShoot` path (the
+   * Boss/SpaceStation precedent) because the shots follow the nose rather than
+   * a fresh aim at the player.
+   */
+  private updateDuelist(dt: number, ctx: EnemyContext): void {
+    // Always face the player. The art points down, so the sprite's rotation is
+    // the heading less a quarter turn (0 = nose down = player directly below).
+    const wanted = Math.atan2(ctx.playerY - this.y, ctx.playerX - this.x);
+    this.duelFacing = turnToward(
+      this.duelFacing,
+      wanted,
+      DUELIST.turnRate * dt,
+    );
+    this.sprite.rotation = this.duelFacing - Math.PI / 2;
+
+    // First update is the first choice: it enters from above the top edge and
+    // flies straight to the spot it picks here, so there is no separate descent.
+    if (!this.duelHasTarget) this.chooseDuelistSpot(ctx);
+
+    // Parked: feed the burst, then choose the next spot when the dwell runs out.
+    if (this.duelDwell > 0) {
+      this.duelDwell -= dt;
+      // Every shot leaves along the CURRENT nose, so the volley bends toward a
+      // drifting player but trails a committed break.
+      if (this.shotsRemaining > 0) {
+        this.fireTimer -= dt;
+        if (this.fireTimer <= 0) {
+          this.fireAlongNose(ctx);
+          this.shotsRemaining--;
+          this.fireTimer = DUELIST.burstInterval;
+        }
+      }
+      if (this.duelDwell <= 0) this.chooseDuelistSpot(ctx);
+      return;
+    }
+
+    // Travelling: interpolate from where it left to the spot it committed to,
+    // eased in and out, so the move pulls away and settles rather than sliding
+    // at a flat rate. Driving it off progress (rather than stepping toward the
+    // target) is what makes the ease exact at both ends and arrival exact at k=1.
+    this.duelTravelT += dt;
+    const k = this.duelTravelT / this.duelTravel;
+    if (k < 1) {
+      const eased = easeInOut(k);
+      this.sprite.position.set(
+        this.duelFromX + (this.duelTargetX - this.duelFromX) * eased,
+        this.duelFromY + (this.duelTargetY - this.duelFromY) * eased,
+      );
+      return;
+    }
+    // Arrived — fire immediately and start the dwell.
+    this.sprite.position.set(this.duelTargetX, this.duelTargetY);
+    this.duelDwell = DUELIST.dwellSeconds;
+    this.shotsRemaining = DUELIST.burstCount;
+    this.fireTimer = 0;
+  }
+
+  /**
+   * Choose and COMMIT the next spot: step the arc angle around the player, then
+   * resolve it against the player's position right now.
+   *
+   * Everything player-relative happens here and nowhere else — this single call
+   * is the whole of the Duelist's dependence on where the ship is, which is what
+   * keeps "it doesn't follow you" true by construction rather than by care.
+   */
+  private chooseDuelistSpot(ctx: EnemyContext): void {
+    const step = degToRad(
+      randRange(DUELIST.arcStepMinDeg, DUELIST.arcStepMaxDeg),
+    );
+    const next = stepArc(
+      this.duelArc,
+      this.duelDir,
+      step,
+      DUELIST_ARC_HALF_RANGE,
+    );
+    this.duelArc = next.arc;
+    this.duelDir = next.dir;
+
+    const spot = anchorFor(
+      ctx.playerX,
+      ctx.playerY,
+      this.duelArc,
+      DUELIST.standoffRadius,
+      DUELIST_BOUNDS,
+    );
+    this.duelTargetX = spot.x;
+    this.duelTargetY = spot.y;
+    this.duelHasTarget = true;
+
+    // Freeze the departure point and the trip length; the move is played out as
+    // eased progress between the two.
+    this.duelFromX = this.sprite.x;
+    this.duelFromY = this.sprite.y;
+    this.duelTravel = travelSeconds(
+      Math.hypot(spot.x - this.sprite.x, spot.y - this.sprite.y),
+      DUELIST.moveSpeed,
+      DUELIST.travelMinSeconds,
+    );
+    this.duelTravelT = 0;
+  }
+
+  /** One Duelist shot, sent along the nose rather than at a fresh aim on the
+   *  player — the facing the player can see IS the aim. */
+  private fireAlongNose(ctx: EnemyContext): void {
+    const speed = ENEMY_BULLET.speed;
+    ctx.fire(
+      this.x,
+      this.y,
+      Math.cos(this.duelFacing) * speed,
+      Math.sin(this.duelFacing) * speed,
+      this.bulletDamage,
+    );
   }
 
   /**
@@ -1233,6 +1460,42 @@ export class EnemyPool {
     const e = this.obtain();
     e.spawnMiniBoss(mods, appearance);
     this.live.push(e);
+  }
+
+  /**
+   * Spawn a Duelist on the side of the field opposite any Duelist already live,
+   * so a pair latches onto opposite arcs and catches the player in a crossfire
+   * (ADR-0024). It enters on that side rather than gliding across the field to
+   * reach it.
+   *
+   * The DUELIST.maxLive cap is NOT enforced here — WaveManager owns it, because
+   * it is the thing that has a fallback to spawn instead.
+   */
+  spawnDuelist(mods: WaveMods): void {
+    const e = this.obtain();
+    const existing = this.live.find((o) => o.kind === "duelist");
+    const side: 1 | -1 = existing
+      ? (-existing.duelistSide as 1 | -1)
+      : Math.random() < 0.5
+        ? -1
+        : 1;
+    const mid = VIRTUAL_WIDTH / 2;
+    const margin = 120;
+    const x =
+      side > 0
+        ? randRange(mid, VIRTUAL_WIDTH - margin)
+        : randRange(margin, mid);
+    e.spawnDuelist(x, mods, side);
+    this.live.push(e);
+  }
+
+  /** How many live enemies of `kind` are on the field. WaveManager uses this to
+   *  cap the Duelist, which never leaves and so cannot be bounded by a spawn
+   *  chance alone. */
+  countLive(kind: EnemyKind): number {
+    let n = 0;
+    for (const e of this.live) if (e.kind === kind) n++;
+    return n;
   }
 
   /** Spawn a Lode: it picks its own entry side and lane altitude (ADR-0021). */
